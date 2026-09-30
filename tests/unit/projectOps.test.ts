@@ -112,3 +112,12 @@ describe('nó Navegador', () => {
     expect(setSessionId(p, 'b', 'x', T1).nodes[0]).not.toHaveProperty('sessionId')
   })
 })
+
+describe('papéis', () => {
+  test('addTerminal guarda o papel; sem papel não cria a chave', () => {
+    const p = addTerminal(base(), { agent: 'claude', name: 'Revisor', color: '#fff', x: 0, y: 0, role: 'reviewer' }, 'r', T1)
+    expect(p.nodes[0]).toMatchObject({ role: 'reviewer' })
+    const q = addTerminal(base(), { agent: 'claude', name: 'C', color: '#fff', x: 0, y: 0, role: undefined }, 'c', T1)
+    expect(q.nodes[0]).not.toHaveProperty('role')
+  })
+})

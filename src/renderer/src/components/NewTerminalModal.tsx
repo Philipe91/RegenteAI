@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { PROJECT_COLORS, type AgentId } from '@shared/types'
+import { ROLE_IDS, ROLES, type RoleId } from '@shared/roles'
 import { useWorkspace } from '../state/workspace'
 
 interface Props {
   count: number
   onCancel(): void
-  onCreate(v: { agent: AgentId; name: string; color: string; command?: string }): void
+  onCreate(v: { agent: AgentId; name: string; color: string; command?: string; role?: RoleId }): void
 }
 
 export function NewTerminalModal({ count, onCancel, onCreate }: Props) {
@@ -14,12 +15,16 @@ export function NewTerminalModal({ count, onCancel, onCreate }: Props) {
   const [name, setName] = useState('')
   const [color, setColor] = useState(PROJECT_COLORS[count % PROJECT_COLORS.length])
   const [command, setCommand] = useState('')
+  const [role, setRole] = useState<RoleId | undefined>(undefined)
+  const canHaveRole = agent === 'claude'
   const label = agents.find((a) => a.id === agent)?.label ?? 'Terminal'
   const canCreate = agent !== 'custom' || command.trim().length > 0
 
   const submit = () => {
     if (!canCreate) return
-    onCreate({ agent, name: name.trim() || `${label} ${count + 1}`, color, command: agent === 'custom' ? command.trim() : undefined })
+    const chosenRole = canHaveRole ? role : undefined
+    const fallback = chosenRole ? ROLES[chosenRole].label : `${label} ${count + 1}`
+    onCreate({ agent, name: name.trim() || fallback, color, command: agent === 'custom' ? command.trim() : undefined, role: chosenRole })
   }
 
   return (
@@ -47,7 +52,18 @@ export function NewTerminalModal({ count, onCancel, onCreate }: Props) {
         {agent === 'custom' && (
           <label>Comando<input autoFocus value={command} onChange={(e) => setCommand(e.target.value)} placeholder="ex.: npm run dev" /></label>
         )}
-        <label>Nome<input autoFocus={agent !== 'custom'} value={name} onChange={(e) => setName(e.target.value)} placeholder={`${label} ${count + 1}`} /></label>
+        {canHaveRole && (
+          <label>Papel
+            <div className="roles">
+              <button className={role ? '' : 'on'} onClick={() => setRole(undefined)}>Nenhum</button>
+              {ROLE_IDS.map((id) => (
+                <button key={id} data-testid={`role-${id}`} className={role === id ? 'on' : ''} style={{ borderLeft: `3px solid ${ROLES[id].color}` }}
+                  title={ROLES[id].prompt} onClick={() => { setRole(id); setColor(ROLES[id].color) }}>{ROLES[id].label}</button>
+              ))}
+            </div>
+          </label>
+        )}
+        <label>Nome<input autoFocus={agent !== 'custom'} value={name} onChange={(e) => setName(e.target.value)} placeholder={canHaveRole && role ? ROLES[role].label : `${label} ${count + 1}`} /></label>
         <label>Cor
           <div className="colors">
             {PROJECT_COLORS.map((c) => (

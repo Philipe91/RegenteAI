@@ -4,6 +4,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import type { TerminalNodeData } from '@shared/types'
+import { ROLES } from '@shared/roles'
 import { termBus } from '../termBus'
 import { useWorkspace } from '../state/workspace'
 
@@ -94,6 +95,7 @@ function TerminalNodeView({ data, selected }: NodeProps<TerminalFlowNode>) {
         <span className="dot" style={{ background: t.color }} />
         <strong>{t.name}</strong>
         <span className="agent">{AGENT_LABEL[t.agent]}</span>
+        {t.role && <span className="role-badge" style={{ background: ROLES[t.role].color }} title={ROLES[t.role].prompt}>{ROLES[t.role].label}</span>}
         {activity && (
           <span className={`status ${activity}`}><span className="led" />{activity === 'working' ? 'trabalhando' : 'pronto'}</span>
         )}
