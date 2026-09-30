@@ -1,4 +1,5 @@
-import { memo, useEffect, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
+import { mergeNote } from '@shared/noteMerge'
 import { Handle, NodeResizer, Position, type Node, type NodeProps } from '@xyflow/react'
 import type { NoteNodeData } from '@shared/types'
 import { useWorkspace } from '../state/workspace'
@@ -11,10 +12,18 @@ function NoteNodeView({ data, selected }: NodeProps<NoteFlowNode>) {
   const removeNode = useWorkspace((s) => s.removeNode)
   const updateGeometry = useWorkspace((s) => s.updateGeometry)
   const [draft, setDraft] = useState(n.text)
-  const [editing, setEditing] = useState(false)
+  /** Último texto em comum entre você e o projeto (base da mesclagem). */
+  const base = useRef(n.text)
 
-  // O que um agente escreve aparece na hora (a não ser que você esteja digitando).
-  useEffect(() => { if (!editing) setDraft(n.text) }, [n.text, editing])
+  // Texto mudou por fora (um agente escreveu): junta com o que você está digitando.
+  useEffect(() => {
+    if (n.text === base.current) return
+    const merged = mergeNote(base.current, draft, n.text)
+    base.current = merged
+    setDraft(merged)
+    if (merged !== n.text) setNoteText(projectId, n.id, merged)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [n.text])
 
   return (
     <div className={`term-node note-node${selected ? ' selected' : ''}`} data-testid="note-node">
@@ -40,9 +49,7 @@ function NoteNodeView({ data, selected }: NodeProps<NoteFlowNode>) {
         value={draft}
         placeholder="Escreva aqui. Agentes ligados leem com: regente note"
         spellCheck={false}
-        onFocus={() => setEditing(true)}
-        onBlur={() => setEditing(false)}
-        onChange={(e) => { setDraft(e.target.value); setNoteText(projectId, n.id, e.target.value) }}
+        onChange={(e) => { base.current = e.target.value; setDraft(e.target.value); setNoteText(projectId, n.id, e.target.value) }}
       />
     </div>
   )

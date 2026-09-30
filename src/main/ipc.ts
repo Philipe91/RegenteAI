@@ -10,8 +10,9 @@ import { isExternalUrl } from './security'
 import type { Topology, TopoNode } from './bridge/topology'
 import type { BrowserManager } from './browser/manager'
 import { runBrowserCommand } from './browser/commands'
+import type { Orchestrator } from './bridge/orchestrator'
 
-export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: TerminalService, pty: PtyManager, topology: Topology, browsers: BrowserManager): void {
+export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: TerminalService, pty: PtyManager, topology: Topology, browsers: BrowserManager, orchestrator: Orchestrator): void {
   const send = (channel: string, ...args: unknown[]) => { if (!win.isDestroyed()) win.webContents.send(channel, ...args) }
 
   ipcMain.handle(IPC.projectsList, () => store.list())
@@ -40,6 +41,7 @@ export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: 
     await runBrowserCommand(browsers, nodeId, 'goto', [url])
   }))
   browsers.on('state', (nodeId: string, state: unknown) => send(IPC.browserState, nodeId, state))
+  ipcMain.on(IPC.termResume, (_e, id: string) => orchestrator.resume(id))
   ipcMain.on(IPC.topologyUpdate, (_e, projectId: string, nodes: TopoNode[], edges: EdgeData[]) => topology.update(projectId, nodes, edges))
   ipcMain.on(IPC.topologyRemove, (_e, projectId: string) => topology.remove(projectId))
   ipcMain.on(IPC.openExternal, (_e, url: string) => { if (isExternalUrl(url)) void shell.openExternal(url) })

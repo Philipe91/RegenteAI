@@ -1,6 +1,6 @@
 # Regente — Fase 4: orquestração assíncrona
 
-**Data:** 2026-09-30 · **Status:** em implementação · Pedido do Philipe: "trabalhe na lógica desse sistema, muito cuidado, ele vai servir para orquestrar as IAs a desenvolver software, sites, qualquer coisa com vários terminais e agentes".
+**Data:** 2026-09-30 · **Status:** implementado · Pedido do Philipe: "trabalhe na lógica desse sistema, muito cuidado, ele vai servir para orquestrar as IAs a desenvolver software, sites, qualquer coisa com vários terminais e agentes".
 
 ## 1. Problemas do fluxo atual (Fase 2)
 1. `regente ask` bloqueia quem pergunta, e a ferramenta de shell do Claude corta em 10 min. Tarefas reais (implementar, testar, pesquisar) passam disso: o Líder perde a resposta.

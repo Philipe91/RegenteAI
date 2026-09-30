@@ -51,7 +51,7 @@
     ],
     "asarUnpack": [
       "node_modules/node-pty/**",
-      "out/main/cli.js"
+      "out/main/**"
     ],
     "npmRebuild": false,
     "win": {

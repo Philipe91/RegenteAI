@@ -56,6 +56,8 @@ export class TerminalService extends EventEmitter {
     if (!r) return null
     this.pty.kill(id)
     this.running.delete(id)
+    // O turno em andamento se perdeu: o orquestrador falha o que estava sendo feito ali.
+    this.emit('reset', id)
     return this.start(r.req)
   }
 
@@ -114,6 +116,7 @@ export class TerminalService extends EventEmitter {
         const sessionId = adapter.createsSessionId ? this.newId() : undefined
         const next: StartTerminalRequest = { ...r.req, node: { ...r.req.node, sessionId } }
         this.emit('notice', id, SESSION_GONE)
+        this.emit('reset', id)
         try {
           this.spawn(next, adapter.launch(exe, sessionId, next.node.command))
           this.running.set(id, { req: next, resumed: false })
@@ -126,6 +129,6 @@ export class TerminalService extends EventEmitter {
     }
     if (r) r.exitCode = code
     this.emit('exit', id, code)
-    this.emit('gone', id)
+    this.emit('reset', id)
   }
 }

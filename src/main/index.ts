@@ -12,7 +12,7 @@ import { Bridge } from './bridge/bridge'
 import { Topology } from './bridge/topology'
 import { RegenteIntegration } from './bridge/integration'
 import { registerBridgeRoutes } from './bridge/routes'
-import { AskBroker } from './bridge/askBroker'
+import { Orchestrator } from './bridge/orchestrator'
 import { IPC } from '@shared/ipc'
 import { BrowserManager } from './browser/manager'
 import { chooseBrowser, detectBrowsers, readDefaultProgId } from './browser/detect'
@@ -42,19 +42,21 @@ if (!app.requestSingleInstanceLock()) {
     const url = await bridge.listen()
     const integration = new RegenteIntegration(bridge, url, dataDir, process.execPath, join(__dirname, 'cli.js').replace('app.asar', 'app.asar.unpacked'))
     const terminals = new TerminalService(pty, adapters, undefined, process.env, integration)
-    const broker = new AskBroker({
+    const orchestrator = new Orchestrator({
       topology,
       isRunning: (id) => pty.isRunning(id),
       write: (id, data) => pty.write(id, data),
       onData: (cb) => pty.on('data', cb),
       onGone: (cb) => terminals.on('gone', cb),
+      onReset: (cb) => terminals.on('reset', cb),
       supportsHooks: (id) => topology.node(id)?.node.agent === 'claude'
     })
-    const flow = (from: string, to: string, active: boolean) => { if (win && !win.isDestroyed()) win.webContents.send(IPC.termFlow, from, to, active) }
-    terminals.on('spawned', (id: string) => broker.markStarting(id))
+    const send = (channel: string, ...args: unknown[]) => { if (win && !win.isDestroyed()) win.webContents.send(channel, ...args) }
+    terminals.on('spawned', (id: string) => orchestrator.markStarting(id))
     registerBridgeRoutes(bridge, {
-      topology, pty, broker, browsers, onFlow: flow,
-      onNoteChange: (nodeId, text) => { if (win && !win.isDestroyed()) win.webContents.send(IPC.noteUpdate, nodeId, text) }
+      topology, pty, orchestrator, browsers,
+      onFlow: (from, to, active) => send(IPC.termFlow, from, to, active),
+      onNoteChange: (nodeId, text) => send(IPC.noteUpdate, nodeId, text)
     })
 
     win = new BrowserWindow({
@@ -62,16 +64,23 @@ if (!app.requestSingleInstanceLock()) {
       webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true }
     })
     guardWebContents(win.webContents, (u) => void shell.openExternal(u))
-    registerIpc(win, store, terminals, pty, topology, browsers)
-    const send = (channel: string, ...args: unknown[]) => { if (win && !win.isDestroyed()) win.webContents.send(channel, ...args) }
-    broker.on('status', (id: string, s: string) => send(IPC.termStatus, id, s))
-    broker.on('turn-end', (id: string, message: string) => {
+    registerIpc(win, store, terminals, pty, topology, browsers, orchestrator)
+
+    // Notificações do Windows. As referências ficam guardadas: sem isso o clique pode se perder (coleta de lixo).
+    const toasts = new Set<Notification>()
+    const notify = (id: string, kind: 'done' | 'needs-user', message: string) => {
       const name = topology.node(id)?.node.name
       if (!name || !win || win.isDestroyed() || !Notification.isSupported()) return
-      const n = notificationFor({ name, message, focused: win.isFocused() && !win.isMinimized() && win.isVisible(), enabled: store.loadApp().notify !== false })
+      const focused = win.isFocused() && !win.isMinimized() && win.isVisible()
+      const n = notificationFor({ name, message, kind, focused, enabled: store.loadApp().notify !== false })
       if (!n) return
       const toast = new Notification({ title: n.title, body: n.body, silent: false })
+      toasts.add(toast)
+      const forget = () => toasts.delete(toast)
+      toast.on('close', forget)
+      toast.on('failed', forget)
       toast.on('click', () => {
+        forget()
         if (!win || win.isDestroyed()) return
         if (win.isMinimized()) win.restore()
         win.show()
@@ -80,14 +89,23 @@ if (!app.requestSingleInstanceLock()) {
       })
       toast.show()
       console.log(`[regente] notificação: ${n.title} — ${n.body}`)
-    })
-    broker.on('flow', (from: string, to: string, active: boolean) => send(IPC.termFlow, from, to, active))
+    }
+
+    orchestrator.on('status', (id: string, s: string) => send(IPC.termStatus, id, s))
+    orchestrator.on('flow', (from: string, to: string, active: boolean) => send(IPC.termFlow, from, to, active))
+    orchestrator.on('queue', (id: string, size: number) => send(IPC.termQueue, id, size))
+    orchestrator.on('paused', (id: string, paused: boolean) => send(IPC.termPaused, id, paused))
+    orchestrator.on('notice', (id: string, message: string) => send(IPC.termNotice, id, message))
+    // Turno que só atendeu outro agente não notifica: quem pediu já recebe a resposta.
+    orchestrator.on('turn-end', (id: string, message: string, served: boolean) => { if (!served) notify(id, 'done', message) })
+    orchestrator.on('needs-user', (id: string, message: string) => notify(id, 'needs-user', message))
+
     if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
     else win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
   app.on('second-instance', () => {
-    if (!win) return
+    if (!win || win.isDestroyed()) return
     if (win.isMinimized()) win.restore()
     win.focus()
   })

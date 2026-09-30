@@ -16,5 +16,6 @@ describe('systemPromptFor', () => {
 
 test('texto preservado (acentos e palavras com s intactos)', () => {
   expect(systemPromptFor('Líder')).toContain('Seu nome aqui é Líder.')
-  expect(systemPromptFor('X')).toContain('regente ask NOME MENSAGEM pede algo')
+  expect(systemPromptFor('X')).toContain('regente send NOME TAREFA delega trabalho')
+  expect(systemPromptFor('X')).toContain('regente ask NOME PERGUNTA só para perguntas rápidas')
 })

@@ -44,7 +44,10 @@ const api: RegenteApi = {
     onSession: (cb) => listen(IPC.termSession, cb),
     onStatus: (cb) => listen(IPC.termStatus, cb),
     onFlow: (cb) => listen(IPC.termFlow, cb),
-    onFocus: (cb) => listen(IPC.termFocus, cb)
+    onFocus: (cb) => listen(IPC.termFocus, cb),
+    onQueue: (cb) => listen(IPC.termQueue, cb),
+    onPaused: (cb) => listen(IPC.termPaused, cb),
+    resume: (id) => ipcRenderer.send(IPC.termResume, id)
   }
 }
 

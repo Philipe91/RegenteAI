@@ -76,3 +76,18 @@ npm run dist
 Gera `dist\Regente Setup <versão>.exe`. Ele instala para o seu usuário (sem admin), cria atalho na área de trabalho e permite escolher a pasta. O instalador não é assinado, então o Windows SmartScreen pode avisar: clique em **Mais informações → Executar assim mesmo**.
 
 `npm run dist:dir` gera só a pasta `dist\win-unpacked` (para testar sem instalar).
+
+## Orquestração: tarefas em paralelo (regente send)
+O jeito certo de um agente delegar trabalho é `regente send`, não `ask`:
+
+```
+regente send Dev1 "implemente o login com testes"
+regente send Dev2 "implemente o cadastro com testes"
+```
+
+- Cada `send` volta **na hora** com o número da tarefa; o Líder pode mandar várias em paralelo e encerrar o turno.
+- Quando um Dev termina, a resposta **entra sozinha** no terminal do Líder como uma nova mensagem (`[Resposta de Dev1 · tarefa #t1 via Regente]`), assim que ele estiver livre. Falhas (Dev fechado, interrompido, tempo esgotado) também chegam assim.
+- `regente tasks` lista, `regente result t1` mostra um resultado, `regente wait t1` espera, `regente cancel t1` cancela.
+- `regente ask` fica para perguntas rápidas (espera até 9 min).
+
+O Regente cuida do resto: uma entrega por agente de cada vez, só quando ele está livre e pronto; cada mensagem tem uma marca única, então a resposta nunca vem do turno errado; agente que pede permissão aparece como **precisa de você** (vermelho, com notificação); e se dois agentes entrarem em laço (mais de 30 mensagens automáticas em 10 min para o mesmo agente), a fila dele pausa até você clicar em **Retomar**.

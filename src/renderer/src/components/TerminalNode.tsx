@@ -14,6 +14,8 @@ const AGENT_LABEL: Record<TerminalNodeData['agent'], string> = { claude: 'Claude
 
 type Banner = { text: string; kind: 'info' | 'exit' | 'error' }
 
+const ACTIVITY_LABEL = { working: 'trabalhando', attention: 'pronto', 'needs-user': 'precisa de você', starting: 'abrindo…' } as const
+
 function TerminalNodeView({ data, selected }: NodeProps<TerminalFlowNode>) {
   const { term: t, projectId, cwd } = data
   const hostRef = useRef<HTMLDivElement>(null)
@@ -23,6 +25,8 @@ function TerminalNodeView({ data, selected }: NodeProps<TerminalFlowNode>) {
   const removeNode = useWorkspace((s) => s.removeNode)
   const updateGeometry = useWorkspace((s) => s.updateGeometry)
   const activity = useWorkspace((s) => s.activity[t.id])
+  const queued = useWorkspace((s) => s.queues[t.id] ?? 0)
+  const isPaused = useWorkspace((s) => Boolean(s.paused[t.id]))
 
   useEffect(() => {
     const xterm = new Terminal({
@@ -97,8 +101,10 @@ function TerminalNodeView({ data, selected }: NodeProps<TerminalFlowNode>) {
         <span className="agent">{AGENT_LABEL[t.agent]}</span>
         {t.role && <span className="role-badge" style={{ background: ROLES[t.role].color }} title={ROLES[t.role].prompt}>{ROLES[t.role].label}</span>}
         {activity && (
-          <span className={`status ${activity}`}><span className="led" />{activity === 'working' ? 'trabalhando' : 'pronto'}</span>
+          <span className={`status ${activity}`}><span className="led" />{ACTIVITY_LABEL[activity]}</span>
         )}
+        {queued > 1 && <span className="queue-badge" title="Entregas esperando este agente">{queued - 1} na fila</span>}
+        {isPaused && <button className="resume nodrag" title="Mensagens automáticas demais: a fila foi pausada" onClick={() => window.regente.term.resume(t.id)}>Retomar</button>}
         <div className="actions nodrag">
           <button title="Reiniciar" onClick={restart}>↻</button>
           <button title="Fechar terminal" onClick={() => removeNode(projectId, t.id)}>×</button>

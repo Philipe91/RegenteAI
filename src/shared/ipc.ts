@@ -22,6 +22,9 @@ export const IPC = {
   topologyUpdate: 'topology:update',
   termStatus: 'term:status',
   termFocus: 'term:focus',
+  termQueue: 'term:queue',
+  termPaused: 'term:paused',
+  termResume: 'term:resume',
   noteUpdate: 'note:update',
   browserOpen: 'browser:open',
   browserClose: 'browser:close',
@@ -64,7 +67,11 @@ export interface RegenteApi {
     onExit(cb: (id: string, code: number) => void): () => void
     onNotice(cb: (id: string, message: string) => void): () => void
     onSession(cb: (id: string, sessionId: string) => void): () => void
-    onStatus(cb: (id: string, status: 'idle' | 'working') => void): () => void
+    onStatus(cb: (id: string, status: 'idle' | 'working' | 'starting' | 'needs-user') => void): () => void
+    onQueue(cb: (id: string, size: number) => void): () => void
+    onPaused(cb: (id: string, paused: boolean) => void): () => void
+    /** Retoma as entregas de um terminal pausado pelo freio de laços. */
+    resume(id: string): void
     onFlow(cb: (from: string, to: string, active: boolean) => void): () => void
     onFocus(cb: (id: string) => void): () => void
   }

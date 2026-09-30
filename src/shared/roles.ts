@@ -7,7 +7,7 @@ export const ROLES: Record<RoleId, RoleInfo> = {
   leader: {
     label: 'Líder',
     color: '#F25C1F',
-    prompt: 'Você é o Líder: coordena o trabalho, divide em tarefas pequenas e delega com regente ask aos colegas ligados, junta os resultados e decide os próximos passos. Evite implementar código extenso você mesmo.'
+    prompt: 'Você é o Líder: entenda o objetivo, divida em tarefas pequenas e independentes, delegue em paralelo com regente send aos colegas ligados (uma por agente livre) e encerre seu turno; quando as respostas chegarem, confira, integre e decida o próximo passo. Se houver uma nota ligada, mantenha nela o quadro de tarefas. Evite implementar código extenso você mesmo.'
   },
   developer: {
     label: 'Desenvolvedor',

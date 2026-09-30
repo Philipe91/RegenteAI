@@ -84,3 +84,10 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .role-badge { font-size: 10px; font-weight: 600; color: #111; border-radius: 4px; padding: 1px 6px; }
 .note-node { background: #1b1813; }
 .note-text { flex: 1; min-height: 0; resize: none; border: none; outline: none; background: transparent; color: var(--text); padding: 10px 12px; font: 13px/1.5 'Cascadia Mono', Consolas, monospace; }
+
+.status.needs-user { color: #ef4444; font-weight: 600; }
+.status.needs-user .led { background: #ef4444; animation: pulse 0.8s ease-in-out infinite; }
+.status.starting .led { background: #8d877e; animation: pulse 1.4s ease-in-out infinite; }
+.tab .led.needs-user { background: #ef4444; animation: pulse 0.8s ease-in-out infinite; }
+.queue-badge { font-size: 10px; color: #EAB308; border: 1px solid #5a4a14; border-radius: 4px; padding: 0 5px; }
+.term-header .resume { font-size: 11px; padding: 0 8px; background: #3a1d12; border-color: var(--accent); }

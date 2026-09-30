@@ -215,17 +215,28 @@ describe('TerminalService — integração com o Regente (Fase 2)', () => {
   })
 })
 
-describe('TerminalService — evento gone (para o AskBroker)', () => {
-  test('kill e saída natural emitem gone', () => {
+describe('TerminalService — eventos para o orquestrador', () => {
+  test('kill = gone (removido); saída natural e restart = reset (o nó continua)', () => {
     const { svc, spawned, advance } = setup()
-    const gone: string[] = []
-    svc.on('gone', (id) => gone.push(id))
+    const ev: string[] = []
+    svc.on('gone', (id) => ev.push(`gone:${id}`))
+    svc.on('reset', (id) => ev.push(`reset:${id}`))
     svc.start(req(node({ agent: 'shell' })))
     advance(60000)
     spawned[0].exit(0)
+    svc.restart('t1')
     svc.start(req(node({ id: 't2', agent: 'shell' })))
     svc.kill('t2')
-    expect(gone).toEqual(['t1', 't2'])
+    expect(ev).toEqual(['reset:t1', 'reset:t1', 'gone:t2'])
+  })
+  test('resume que falhou e foi reaberto com sessão nova também avisa reset', () => {
+    const { svc, spawned, advance } = setup()
+    const ev: string[] = []
+    svc.on('reset', (id) => ev.push(id))
+    svc.start(req(node({ sessionId: 'velha' })))
+    advance(1000)
+    spawned[0].exit(1)
+    expect(ev).toEqual(['t1'])
   })
 })
 

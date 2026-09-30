@@ -16,12 +16,14 @@ export function systemPromptFor(name: string, role?: RoleId): string {
     `Você está rodando dentro do Regente, um canvas onde vários agentes de IA trabalham juntos. Seu nome aqui é ${safe(name)}.`,
     role ? `Seu papel: ${ROLES[role].prompt}` : '',
     'Comandos no seu terminal (rode pela sua ferramenta de shell):',
-    'regente peers lista quem está ligado a você;',
-    'regente ask NOME MENSAGEM pede algo a um agente ligado e ESPERA a resposta, que pode levar minutos, então use o maior timeout que sua ferramenta de shell permitir (ex.: 600000 ms);',
+    'regente peers lista quem está ligado a você e se está livre;',
+    'regente send NOME TAREFA delega trabalho (implementar, testar, pesquisar) e retorna na hora: você segue livre, pode mandar várias em paralelo para agentes diferentes e encerrar seu turno, e cada resposta chega sozinha como uma nova mensagem [Resposta de NOME · tarefa #N] — não fique consultando;',
+    'regente ask NOME PERGUNTA só para perguntas rápidas: espera a resposta ali mesmo (até 9 min; use o maior timeout que sua ferramenta de shell permitir, ex.: 600000 ms);',
+    'regente tasks lista suas tarefas, regente result N mostra um resultado e regente cancel N cancela;',
     'regente browser AÇÃO controla o navegador ligado a você (open, goto, snapshot, click, type, press, screenshot, eval, console, tabs);',
     'regente note lê a nota ligada a você e regente note append TEXTO acrescenta nela;',
     'regente help mostra tudo.',
-    'Quando chegar uma mensagem que começa com [Mensagem de NOME via Regente], responda normalmente: sua resposta final volta sozinha para quem pediu.'
+    'Quando chegar [Mensagem de NOME via Regente] ou [Tarefa #N de NOME via Regente], faça o pedido e termine com um resumo objetivo do resultado (o que fez, onde, o que falta): essa resposta final volta sozinha para quem pediu.'
   ]
   return safe(parts.filter(Boolean).join(' '))
 }
@@ -58,7 +60,7 @@ export class RegenteIntegration implements TerminalIntegration {
   agentContext(req: StartTerminalRequest): AgentContext {
     const hook = (event: string) => ({ hooks: [{ type: 'command', command: `"$REGENTE_BIN/regente" hook ${event}` }] })
     const settingsPath = join(this.hooksDir, `${req.node.id}.json`)
-    const hooks = { SessionStart: [hook('session')], UserPromptSubmit: [hook('prompt')], Stop: [hook('stop')] }
+    const hooks = { SessionStart: [hook('session')], UserPromptSubmit: [hook('prompt')], Stop: [hook('stop')], Notification: [hook('notification')] }
     writeFileSync(settingsPath, JSON.stringify({ hooks }, null, 2), 'utf8')
     return { settingsPath, systemPrompt: systemPromptFor(req.node.name, req.node.role) }
   }

@@ -18,3 +18,7 @@ describe('notificationFor', () => {
     expect(notificationFor({ name: 'R', message: 'a\n\n  b', focused: false, enabled: true })?.body).toBe('a b')
   })
 })
+
+test('precisa de você tem título próprio', () => {
+  expect(notificationFor({ name: 'Dev1', message: 'Claude needs your permission', focused: false, enabled: true, kind: 'needs-user' })?.title).toBe('Dev1 precisa de você')
+})

@@ -6,7 +6,7 @@ import { createSaver } from './saver'
 export interface Toast { id: number; message: string }
 
 /** Estado ao vivo de cada terminal (não é salvo). */
-export type Activity = 'working' | 'attention'
+export type Activity = 'working' | 'attention' | 'needs-user' | 'starting'
 
 interface WorkspaceState {
   ready: boolean
@@ -17,6 +17,10 @@ interface WorkspaceState {
   toasts: Toast[]
   activity: Record<string, Activity>
   flows: Record<string, true>
+  /** Entregas pendentes por terminal (a em andamento + fila). */
+  queues: Record<string, number>
+  paused: Record<string, true>
+  clearFocusRequest(): void
   browserStates: Record<string, BrowserUiState>
   browserPref: BrowserPref
   notifyPref: boolean
@@ -69,7 +73,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
   }
 
   return {
-    ready: false, projects: {}, openIds: [], activeId: null, agents: [], toasts: [], activity: {}, flows: {}, browserStates: {}, browserPref: 'auto', notifyPref: true, focusRequest: null,
+    ready: false, projects: {}, openIds: [], activeId: null, agents: [], toasts: [], activity: {}, flows: {}, queues: {}, paused: {}, browserStates: {}, browserPref: 'auto', notifyPref: true, focusRequest: null,
 
     async init() {
       const [appState, agents] = await Promise.all([window.regente.app.load(), window.regente.agents.available()])
@@ -85,8 +89,16 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       }
       window.regente.term.onStatus((nodeId, status) => {
         const { [nodeId]: prev, ...rest } = get().activity
-        if (status === 'working') set({ activity: { ...rest, [nodeId]: 'working' } })
-        else set({ activity: prev === 'working' ? { ...rest, [nodeId]: 'attention' } : rest })
+        if (status === 'working' || status === 'needs-user' || status === 'starting') set({ activity: { ...rest, [nodeId]: status } })
+        else set({ activity: prev === 'working' || prev === 'needs-user' ? { ...rest, [nodeId]: 'attention' } : rest })
+      })
+      window.regente.term.onQueue((nodeId, size) => {
+        const { [nodeId]: _old, ...rest } = get().queues
+        set({ queues: size > 0 ? { ...rest, [nodeId]: size } : rest })
+      })
+      window.regente.term.onPaused((nodeId, isPaused) => {
+        const { [nodeId]: _old, ...rest } = get().paused
+        set({ paused: isPaused ? { ...rest, [nodeId]: true } : rest })
       })
       window.regente.term.onFocus((nodeId) => {
         const pid = ops.projectIdForNode(get().projects, nodeId)
@@ -170,6 +182,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     updateGeometry(projectId, nodeId, geo) { mutate(projectId, (p) => ops.updateGeometry(p, nodeId, geo, now())) },
     moveNodes(projectId, updates) { mutate(projectId, (p) => ops.updateGeometries(p, updates, now())) },
     setBrowserPref(pref) { set({ browserPref: pref }); saveApp() },
+    clearFocusRequest() { set({ focusRequest: null }) },
     setNotifyPref(on) { set({ notifyPref: on }); saveApp() },
     addNote(projectId, input) { mutate(projectId, (p) => ops.addNote(p, input, crypto.randomUUID(), now())) },
     setNoteText(projectId, nodeId, text) { mutate(projectId, (p) => ops.setNoteText(p, nodeId, text, now())) },

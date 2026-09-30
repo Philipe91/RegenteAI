@@ -47,11 +47,18 @@ function CanvasInner({ project }: { project: Project }) {
   }, [project, setNodes])
 
   // Clique numa notificação: centraliza o nó que terminou.
+  const clearFocusRequest = useWorkspace((s) => s.clearFocusRequest)
+  const nodesRef = useRef(project.nodes)
+  nodesRef.current = project.nodes
   useEffect(() => {
-    if (!focusRequest || !project.nodes.some((n) => n.id === focusRequest.nodeId)) return
-    const t = setTimeout(() => void rf.fitView({ nodes: [{ id: focusRequest.nodeId }], padding: 0.3, duration: 400, maxZoom: 1 }), 50)
+    if (!focusRequest || !nodesRef.current.some((n) => n.id === focusRequest.nodeId)) return
+    const id = focusRequest.nodeId
+    clearFocusRequest()
+    const t = setTimeout(() => void rf.fitView({ nodes: [{ id }], padding: 0.3, duration: 400, maxZoom: 1 }), 50)
     return () => clearTimeout(t)
-  }, [focusRequest, project.nodes, rf])
+    // Só reage a um pedido novo (at), nunca a mudanças dos nós.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequest?.at])
 
   const openModalAtCenter = useCallback(() => {
     const r = wrapRef.current!.getBoundingClientRect()

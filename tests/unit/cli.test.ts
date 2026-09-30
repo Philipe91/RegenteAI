@@ -44,7 +44,7 @@ describe('runCli', () => {
     const { env } = await setup()
     const { x, out } = io(env)
     expect(await runCli(['peers'], x)).toBe(0)
-    expect(out.join('')).toMatch(/Revisor.*Claude Code.*ocioso/)
+    expect(out.join('')).toMatch(/Revisor.*Claude Code.*livre/)
   })
   test('ask junta a mensagem e imprime a resposta', async () => {
     const { env, calls } = await setup()
@@ -107,5 +107,36 @@ describe('runCli note', () => {
     const { x, err } = io({ REGENTE_URL: 'http://127.0.0.1:1', REGENTE_TOKEN: 'x' })
     expect(await runCli(['note', 'append'], x)).toBe(2)
     expect(err.join('')).toMatch(/uso: regente note/)
+  })
+})
+
+describe('runCli — tarefas', () => {
+  test('send, tasks, result, wait e cancel repassam para o Regente e imprimem o texto', async () => {
+    bridge = new Bridge()
+    const calls: Array<[string, unknown]> = []
+    for (const path of ['/send', '/tasks', '/result', '/wait', '/cancel']) {
+      bridge.route(path, (_c, body) => { calls.push([path, body]); return { text: `ok ${path}` } })
+    }
+    const url = await bridge.listen()
+    const env = { REGENTE_URL: url, REGENTE_TOKEN: bridge.issueToken('t') }
+    const run = async (args: string[]) => { const x = io(env); const code = await runCli(args, x.x); return { code, out: x.out.join('') } }
+    expect(await run(['send', 'Dev1', 'implemente', 'o', 'login', '--timeout', '60'])).toEqual({ code: 0, out: 'ok /send\n' })
+    expect((await run(['tasks'])).out).toBe('ok /tasks\n')
+    expect((await run(['result', '#t1'])).out).toBe('ok /result\n')
+    expect((await run(['wait', 't1', '--timeout', '5'])).out).toBe('ok /wait\n')
+    expect((await run(['cancel', 't1'])).out).toBe('ok /cancel\n')
+    expect(calls).toEqual([
+      ['/send', { to: 'Dev1', message: 'implemente o login', timeoutMin: 60 }],
+      ['/tasks', {}],
+      ['/result', { id: 't1' }],
+      ['/wait', { id: 't1', timeoutMin: 5 }],
+      ['/cancel', { id: 't1' }]
+    ])
+  })
+  test('send sem tarefa, result sem número → uso', async () => {
+    const { x, err } = io({ REGENTE_URL: 'http://127.0.0.1:1', REGENTE_TOKEN: 'x' })
+    expect(await runCli(['send', 'Dev1'], x)).toBe(2)
+    expect(await runCli(['result'], x)).toBe(2)
+    expect(err.join('')).toMatch(/uso: regente send[\s\S]*uso: regente result/)
   })
 })

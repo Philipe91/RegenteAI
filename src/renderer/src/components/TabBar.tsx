@@ -18,7 +18,7 @@ export function TabBar() {
   const setNotifyPref = useWorkspace((s) => s.setNotifyPref)
   const tabActivity = (id: string) => {
     const states = projects[id].nodes.map((n) => activity[n.id])
-    return states.includes('working') ? 'working' : states.includes('attention') ? 'attention' : null
+    return states.includes('needs-user') ? 'needs-user' : states.includes('working') ? 'working' : states.includes('attention') ? 'attention' : null
   }
 
   return (
@@ -36,7 +36,7 @@ export function TabBar() {
           >
             <span className="dot" style={{ background: p.color }} />
             <span className="name">{p.name}</span>
-            {tabActivity(id) && <span className={`led ${tabActivity(id)}`} title={tabActivity(id) === 'working' ? 'Agente trabalhando' : 'Agente terminou'} />}
+            {tabActivity(id) && <span className={`led ${tabActivity(id)}`} title={tabActivity(id) === 'needs-user' ? 'Um agente precisa de você' : tabActivity(id) === 'working' ? 'Agente trabalhando' : 'Agente terminou'} />}
             <button className="close" title="Fechar projeto (salva e encerra os terminais)" onClick={(e) => { e.stopPropagation(); closeProject(id) }}>×</button>
           </div>
         )

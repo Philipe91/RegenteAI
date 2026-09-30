@@ -5,14 +5,23 @@ export interface CliIO {
   readStdin(): Promise<string>
 }
 
-const AGENT_LABEL: Record<string, string> = { claude: 'Claude Code', shell: 'PowerShell', custom: 'Comando', browser: 'Navegador' }
-const STATUS_LABEL: Record<string, string> = { idle: 'ocioso', working: 'trabalhando', exited: 'encerrado', stopped: 'fechado', open: 'aberto' }
+const AGENT_LABEL: Record<string, string> = { claude: 'Claude Code', shell: 'PowerShell', custom: 'Comando', browser: 'Navegador', note: 'Nota' }
+const STATUS_LABEL: Record<string, string> = {
+  idle: 'livre', working: 'trabalhando', starting: 'abrindo', 'needs-user': 'precisa do usuário',
+  exited: 'encerrado', stopped: 'fechado', open: 'aberto', paused: 'pausado (mensagens demais)'
+}
 
-const HELP = `Regente — conversa entre agentes
+const HELP = `Regente — orquestração de agentes
 
-  regente peers                          quem está ligado a você
-  regente ask <nome> "<mensagem>"        pede algo a um agente ligado e espera a resposta
-        [--timeout <min>]                (padrão: 10 minutos)
+  regente peers                          quem está ligado a você (e se está livre)
+  regente send <nome> "<tarefa>"         delega uma tarefa e segue livre; a resposta chega
+        [--timeout <min>]                sozinha aqui como nova mensagem (padrão: 120 min)
+  regente tasks                          tarefas que você enviou e recebeu
+  regente result <#tarefa>               resultado de uma tarefa
+  regente wait <#tarefa> [--timeout <min>]  espera a tarefa terminar (útil em shells)
+  regente cancel <#tarefa>               cancela uma tarefa que você enviou
+  regente ask <nome> "<mensagem>"        pergunta rápida: espera a resposta aqui
+        [--timeout <min>]                (padrão: 9 minutos)
   regente browser <ação> [...]           controla o navegador ligado a você
         open [url] | goto <url> | back | reload | snapshot | click <n|seletor>
         type <n|seletor> "<texto>" | press <tecla> | screenshot | eval "<js>"
@@ -90,6 +99,29 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
       if (!to || !message) { io.err('uso: regente ask <nome> "<mensagem>" [--timeout <min>]\n'); return 2 }
       const reply = await call(io, '/ask', { to, message, ...(timeoutMin ? { timeoutMin } : {}) })
       io.out(`${String(reply)}\n`)
+      return 0
+    }
+    if (cmd === 'send') {
+      const { rest, timeoutMin } = parseTimeout(args)
+      const [to, ...words] = rest
+      const message = words.join(' ').trim()
+      if (!to || !message) { io.err('uso: regente send <nome> "<tarefa>" [--timeout <min>]\n'); return 2 }
+      const r = (await call(io, '/send', { to, message, ...(timeoutMin ? { timeoutMin } : {}) })) as { text: string }
+      io.out(`${r.text}\n`)
+      return 0
+    }
+    if (cmd === 'tasks') {
+      const r = (await call(io, '/tasks', {})) as { text: string }
+      io.out(`${r.text}\n`)
+      return 0
+    }
+    if (cmd === 'result' || cmd === 'wait' || cmd === 'cancel') {
+      const { rest, timeoutMin } = parseTimeout(args)
+      const id = (rest[0] ?? '').replace(/^#/, '')
+      if (!id) { io.err(`uso: regente ${cmd} <#tarefa>${cmd === 'wait' ? ' [--timeout <min>]' : ''}\n`); return 2 }
+      const body = cmd === 'wait' && timeoutMin ? { id, timeoutMin } : { id }
+      const r = (await call(io, `/${cmd}`, body)) as { text: string }
+      io.out(`${r.text}\n`)
       return 0
     }
     if (cmd === 'note') {
