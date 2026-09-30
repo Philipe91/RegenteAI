@@ -30,6 +30,8 @@
 4. **Regente iniciado de dentro de um Claude Code** (variáveis `CLAUDECODE`/`CLAUDE_CODE_ENTRYPOINT` herdadas) → os Claudes filhos abrem normais, sem achar que estão aninhados. Teste na Task 5 (env filtrado).
 5. **Pasta do projeto apagada/movida** → o nó mostra erro claro em vez de travar ou abrir em outro lugar. Teste na Task 5.
 
+Fica para a Fase 2 (depende dos hooks de "comecei/terminei"): os indicadores ● de "trabalhando" / "precisa de atenção" nas abas e nos nós (spec 4.1 e 5.6), e os adaptadores de Codex e Gemini.
+
 Decisão de UX registrada (melhoria sobre o spec): **Esc não tira o foco do terminal**, porque Esc é o "interromper" do Claude/Codex. O foco sai clicando no fundo do canvas. **Delete/Backspace não apagam nós** (evita matar um agente sem querer); remover é pelo botão × do nó.
 
 ---
