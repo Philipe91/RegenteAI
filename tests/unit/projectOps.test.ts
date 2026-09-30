@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { newProject } from '@shared/types'
-import { addTerminal, DEFAULT_TERMINAL_SIZE, removeNode, setSessionId, setViewport, updateGeometry } from '../../src/renderer/src/state/projectOps'
+import { addTerminal, DEFAULT_TERMINAL_SIZE, findFreeSpot, removeNode, setSessionId, setViewport, updateGeometry } from '../../src/renderer/src/state/projectOps'
 
 const T0 = '2026-09-30T12:00:00.000Z'
 const T1 = '2026-09-30T12:05:00.000Z'
@@ -37,5 +37,20 @@ describe('projectOps', () => {
     let p = addTerminal(base(), { agent: 'shell', name: 'S', color: '#fff', x: 0, y: 0 }, 's', T1)
     p = updateGeometry(p, 's', { width: 20, height: Number.NaN }, T1)
     expect(p.nodes[0]).toMatchObject({ width: 640, height: 400 })
+  })
+})
+
+describe('findFreeSpot', () => {
+  test('posição livre fica como está', () => {
+    expect(findFreeSpot([], { x: 100, y: 100 })).toEqual({ x: 100, y: 100 })
+  })
+  test('desloca em cascata enquanto houver nó no mesmo ponto', () => {
+    let p = addTerminal(base(), { agent: 'shell', name: 'A', color: '#fff', x: 100, y: 100 }, 'a', T1)
+    p = addTerminal(p, { agent: 'shell', name: 'B', color: '#fff', x: 132, y: 132 }, 'b', T1)
+    expect(findFreeSpot(p.nodes, { x: 100, y: 100 })).toEqual({ x: 164, y: 164 })
+  })
+  test('considera ocupado quem está a menos de 16px', () => {
+    const p = addTerminal(base(), { agent: 'shell', name: 'A', color: '#fff', x: 110, y: 95 }, 'a', T1)
+    expect(findFreeSpot(p.nodes, { x: 100, y: 100 })).toEqual({ x: 132, y: 132 })
   })
 })

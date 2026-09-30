@@ -1,0 +1,56 @@
+:root {
+  --bg: #101010; --panel: #181818; --panel-2: #202020; --line: #2c2c2c;
+  --text: #ece7df; --muted: #8d877e; --accent: #F25C1F; --danger: #ef4444;
+  font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); background: var(--bg);
+}
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; overflow: hidden; }
+button { font: inherit; color: inherit; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+button:hover { border-color: #444; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 600; }
+
+.app { display: flex; flex-direction: column; height: 100%; }
+.tabbar { position: relative; display: flex; align-items: center; gap: 4px; padding: 6px 8px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.tab { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 6px; cursor: pointer; color: var(--muted); max-width: 220px; }
+.tab.active { background: var(--panel-2); color: var(--text); }
+.tab .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.tab .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab .close { border: none; background: none; padding: 0 2px; color: var(--muted); }
+.tabbar .spacer { flex: 1; }
+
+.canvas-wrap { flex: 1; position: relative; }
+.empty { height: 100%; display: grid; place-items: center; color: var(--muted); text-align: center; }
+.toolbar { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; gap: 6px; }
+
+.term-node { display: flex; flex-direction: column; height: 100%; background: #141414; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.term-node.selected { border-color: #555; }
+.term-header { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--panel); cursor: grab; font-size: 12px; user-select: none; }
+.term-header .dot { width: 8px; height: 8px; border-radius: 50%; }
+.term-header .agent { color: var(--muted); }
+.term-header .actions { margin-left: auto; display: flex; gap: 4px; }
+.term-header .actions button { padding: 0 6px; font-size: 12px; }
+.term-body { flex: 1; min-height: 0; padding: 4px 0 0 6px; position: relative; }
+.term-body .xterm { height: 100%; }
+.term-banner { position: absolute; left: 8px; right: 8px; bottom: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 12px; display: flex; gap: 8px; align-items: center; }
+.term-banner span { flex: 1; }
+.term-banner.error { border-color: var(--danger); }
+
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center; z-index: 50; }
+.modal { width: 440px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.modal h2 { margin: 0; font-size: 16px; }
+.modal label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.modal input { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; color: var(--text); font: inherit; }
+.agents { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.agents button.on { border-color: var(--accent); }
+.colors { display: flex; gap: 6px; }
+.colors button { width: 22px; height: 22px; border-radius: 50%; padding: 0; }
+.colors button.on { outline: 2px solid var(--text); outline-offset: 2px; }
+.modal .row { display: flex; justify-content: flex-end; gap: 8px; }
+
+.menu { position: absolute; right: 8px; top: 40px; z-index: 40; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; min-width: 300px; padding: 6px; }
+.menu .item { padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; flex-direction: column; }
+.menu .item:hover { background: var(--panel-2); }
+.menu .item small { color: var(--muted); }
+.toasts { position: fixed; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 60; }
+.toast { background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; padding: 8px 12px; max-width: 420px; font-size: 13px; cursor: pointer; }

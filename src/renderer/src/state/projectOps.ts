@@ -44,3 +44,15 @@ export function setSessionId(p: Project, nodeId: string, sessionId: string, now:
 export function setViewport(p: Project, vp: Viewport, now: string): Project {
   return { ...p, viewport: vp, updatedAt: now }
 }
+
+const CASCADE = 32
+const NEAR = 16
+
+/** Evita criar um terminal exatamente em cima de outro: desloca em cascata até achar um ponto livre. */
+export function findFreeSpot(nodes: TerminalNodeData[], pos: { x: number; y: number }): { x: number; y: number } {
+  let spot = { ...pos }
+  while (nodes.some((n) => Math.abs(n.x - spot.x) < NEAR && Math.abs(n.y - spot.y) < NEAR)) {
+    spot = { x: spot.x + CASCADE, y: spot.y + CASCADE }
+  }
+  return spot
+}

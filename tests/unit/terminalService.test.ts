@@ -115,3 +115,17 @@ describe('buildTerminalEnv', () => {
     expect(env).toEqual({ A: '1', COLORTERM: 'truecolor', REGENTE_TERMINAL_ID: 't', REGENTE_PROJECT_ID: 'p' })
   })
 })
+
+describe('buildTerminalEnv — marcadores de sessão Claude pai', () => {
+  test('remove marcadores de sessão, mantém configuração do usuário', () => {
+    const base = {
+      CLAUDECODE: '1', CLAUDE_CODE_CHILD_SESSION: '1', CLAUDE_CODE_ENTRYPOINT: 'cli', CLAUDE_CODE_EXECPATH: 'x',
+      CLAUDE_CODE_MESSAGING_SOCKET: 's', CLAUDE_CODE_MESSAGING_TOKEN: 't', CLAUDE_CODE_SESSION_ATTENDED: '1',
+      CLAUDE_CODE_SESSION_ID: 'id', CLAUDE_PID: '123', CLAUDE_EFFORT: 'low',
+      CLAUDE_CODE_GIT_BASH_PATH: 'C:\\Git\\bin\\bash.exe', ANTHROPIC_MODEL: 'm'
+    }
+    const env = buildTerminalEnv(base, { terminalId: 't', projectId: 'p' })
+    expect(Object.keys(env).filter((k) => k.startsWith('CLAUDE')).sort()).toEqual(['CLAUDE_CODE_GIT_BASH_PATH'])
+    expect(env.ANTHROPIC_MODEL).toBe('m')
+  })
+})
