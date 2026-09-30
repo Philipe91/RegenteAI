@@ -96,7 +96,7 @@ Todo terminal aberto pelo Regente recebe:
 - `REGENTE_URL` (porta do Bridge), `REGENTE_TOKEN` (segredo por terminal) e `REGENTE_TERMINAL_ID`.
 - A pasta do CLI `regente` no início do `PATH` (com `regente.cmd` para PowerShell e cmd).
 - Terminais Claude, além disso, recebem:
-  - `--settings <arquivo por terminal>` com os hooks `UserPromptSubmit` (→ trabalhando) e `Stop` (→ terminou), que chamam `regente hook <evento>`. **Nenhuma configuração global do usuário é alterada.**
+  - `--settings <arquivo por terminal>` com os hooks `UserPromptSubmit` (→ trabalhando) e `Stop` (→ terminou), que chamam `regente hook <evento>`. **Nenhuma configuração global do usuário é alterada.** Todo caminho usado em hooks e no `PATH` vai **entre aspas** e é testado a partir de uma pasta com espaço (o perfil `C:\Users\Pc Fechamento` já quebrou hooks de plugins antes).
   - `--append-system-prompt` com: quem ele é (nome/papel), quem está conectado e como usar `regente ask` / `regente peers`.
 
 ### 5.3 CLI `regente`
