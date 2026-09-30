@@ -5,13 +5,9 @@ import { join } from 'node:path'
 import { chromium, type Browser, type Page } from 'playwright-core'
 import type { BrowserInfo } from './detect'
 
-export interface BrowserState {
-  status: 'opening' | 'open' | 'closed'
-  browser?: string
-  title?: string
-  url?: string
-  note?: string
-}
+import type { BrowserUiState } from '@shared/types'
+
+export type BrowserState = BrowserUiState
 
 interface Session {
   info: BrowserInfo
@@ -20,6 +16,8 @@ interface Session {
   browser: Browser
   current: Page | null
   console: string[]
+  lastPreview: number
+  previewTimer?: ReturnType<typeof setTimeout>
 }
 
 export interface BrowserManagerOptions {
@@ -96,6 +94,7 @@ export class BrowserManager extends EventEmitter {
     const s = this.sessions.get(nodeId)
     if (!s) return
     this.sessions.delete(nodeId)
+    if (s.previewTimer) clearTimeout(s.previewTimer)
     try { await s.browser.close() } catch { /* conexão já caiu */ }
     // Espera o processo sair de verdade (libera o perfil para reabrir/apagar).
     if (s.proc.exitCode === null) {
@@ -117,7 +116,21 @@ export class BrowserManager extends EventEmitter {
     const page = s.current && !s.current.isClosed() ? s.current : null
     let title = ''
     try { title = page ? await page.title() : '' } catch { /* navegando */ }
-    this.emit('state', nodeId, { status: 'open', browser: s.info.label, title, url: page?.url() ?? '' } satisfies BrowserState)
+    const state: BrowserState = { status: 'open', browser: s.info.label, title, url: page?.url() ?? '' }
+    // Prévia da tela para o nó do canvas (no máximo a cada 1,5 s, para não pesar).
+    const since = Date.now() - s.lastPreview
+    if (page && since <= 1500 && !s.previewTimer) {
+      // Dentro da janela: agenda uma captura para o fim dela em vez de perder a imagem mais nova.
+      s.previewTimer = setTimeout(() => { s.previewTimer = undefined; void this.report(nodeId) }, 1500 - since + 50)
+    }
+    if (page && since > 1500) {
+      s.lastPreview = Date.now()
+      try {
+        const jpg = await page.screenshot({ type: 'jpeg', quality: 45, timeout: 3000 })
+        state.preview = `data:image/jpeg;base64,${jpg.toString('base64')}`
+      } catch { /* página em transição */ }
+    }
+    this.emit('state', nodeId, state)
   }
 
   private async launch(nodeId: string): Promise<Session> {
@@ -152,7 +165,7 @@ export class BrowserManager extends EventEmitter {
     }
 
     const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`)
-    const session: Session = { info, proc, port, browser, current: null, console: [] }
+    const session: Session = { info, proc, port, browser, current: null, console: [], lastPreview: 0 }
     this.sessions.set(nodeId, session)
 
     const watch = (page: Page) => {

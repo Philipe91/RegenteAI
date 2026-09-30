@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { AgentInfo, Project, TerminalNodeData, Viewport } from '@shared/types'
+import type { AgentInfo, BrowserPref, BrowserUiState, Project, TerminalNodeData, Viewport } from '@shared/types'
 import * as ops from './projectOps'
 import { createSaver } from './saver'
 
@@ -17,6 +17,10 @@ interface WorkspaceState {
   toasts: Toast[]
   activity: Record<string, Activity>
   flows: Record<string, true>
+  browserStates: Record<string, BrowserUiState>
+  browserPref: BrowserPref
+  setBrowserPref(pref: BrowserPref): void
+  addBrowser(projectId: string, input: { name: string; color: string; x: number; y: number }): void
   init(): Promise<void>
   connect(projectId: string, source: string, target: string): void
   disconnect(projectId: string, edgeId: string): void
@@ -38,7 +42,7 @@ interface WorkspaceState {
 
 /** O motor precisa saber nomes e cordas para o `regente peers/ask/browser`. */
 const syncTopology = (p: Project) =>
-  window.regente.topology.update(p.id, p.nodes.map((n) => ({ id: n.id, name: n.name, agent: n.agent, kind: n.kind })), p.edges)
+  window.regente.topology.update(p.id, p.nodes.map((n) => ({ id: n.id, name: n.name, agent: n.kind === 'terminal' ? n.agent : 'browser', kind: n.kind })), p.edges)
 
 const saver = createSaver((p) => { void window.regente.projects.save(p) }, 400)
 const now = () => new Date().toISOString()
@@ -47,7 +51,7 @@ let toastSeq = 0
 export const useWorkspace = create<WorkspaceState>((set, get) => {
   const saveApp = () => {
     const { openIds, activeId } = get()
-    void window.regente.app.save({ version: 1, openProjectIds: openIds, activeProjectId: activeId })
+    void window.regente.app.save({ version: 1, openProjectIds: openIds, activeProjectId: activeId, browser: get().browserPref })
   }
   const mutate = (projectId: string, fn: (p: Project) => Project) => {
     const p = get().projects[projectId]
@@ -59,7 +63,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
   }
 
   return {
-    ready: false, projects: {}, openIds: [], activeId: null, agents: [], toasts: [], activity: {}, flows: {},
+    ready: false, projects: {}, openIds: [], activeId: null, agents: [], toasts: [], activity: {}, flows: {}, browserStates: {}, browserPref: 'auto',
 
     async init() {
       const [appState, agents] = await Promise.all([window.regente.app.load(), window.regente.agents.available()])
@@ -78,6 +82,12 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         if (status === 'working') set({ activity: { ...rest, [nodeId]: 'working' } })
         else set({ activity: prev === 'working' ? { ...rest, [nodeId]: 'attention' } : rest })
       })
+      window.regente.browser.onState((nodeId, state) => {
+        const prev = get().browserStates[nodeId]
+        // Mantém a última prévia enquanto não chega outra (ex.: estado sem print).
+        const preview = state.status === 'open' ? state.preview ?? prev?.preview : undefined
+        set({ browserStates: { ...get().browserStates, [nodeId]: { ...state, preview } } })
+      })
       window.regente.term.onFlow((from, to, active) => {
         const key = [from, to].sort().join('|')
         const { [key]: _old, ...rest } = get().flows
@@ -91,7 +101,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const openIds = appState.openProjectIds.filter((id) => projects[id])
       const activeId = appState.activeProjectId && projects[appState.activeProjectId] ? appState.activeProjectId : openIds[0] ?? null
       Object.values(projects).forEach(syncTopology)
-      set({ ready: true, projects, openIds, activeId, agents })
+      set({ ready: true, projects, openIds, activeId, agents, browserPref: appState.browser ?? 'auto' })
     },
 
     async createProject() {
@@ -116,7 +126,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const p = get().projects[id]
       if (!p) return
       saver.flush()
-      p.nodes.forEach((n) => window.regente.term.kill(n.id))
+      p.nodes.forEach((n) => (n.kind === 'browser' ? void window.regente.browser.close(n.id) : window.regente.term.kill(n.id)))
       window.regente.topology.remove(id)
       const idx = get().openIds.indexOf(id)
       const openIds = get().openIds.filter((x) => x !== id)
@@ -131,12 +141,16 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     addTerminal(projectId, input) { mutate(projectId, (p) => ops.addTerminal(p, input, crypto.randomUUID(), now())) },
 
     removeNode(projectId, nodeId) {
-      window.regente.term.kill(nodeId)
+      const node = get().projects[projectId]?.nodes.find((n) => n.id === nodeId)
+      if (node?.kind === 'browser') void window.regente.browser.close(nodeId)
+      else window.regente.term.kill(nodeId)
       mutate(projectId, (p) => ops.removeNode(p, nodeId, now()))
     },
 
     updateGeometry(projectId, nodeId, geo) { mutate(projectId, (p) => ops.updateGeometry(p, nodeId, geo, now())) },
     moveNodes(projectId, updates) { mutate(projectId, (p) => ops.updateGeometries(p, updates, now())) },
+    setBrowserPref(pref) { set({ browserPref: pref }); saveApp() },
+    addBrowser(projectId, input) { mutate(projectId, (p) => ops.addBrowser(p, input, crypto.randomUUID(), now())) },
     connect(projectId, source, target) { mutate(projectId, (p) => ops.addEdge(p, source, target, crypto.randomUUID(), now())) },
     disconnect(projectId, edgeId) { mutate(projectId, (p) => ops.removeEdge(p, edgeId, now())) },
     markSeen(nodeId) {

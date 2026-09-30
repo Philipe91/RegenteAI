@@ -1,26 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Background, ConnectionMode, Controls, MiniMap, ReactFlow, ReactFlowProvider, useNodesState, useReactFlow, type XYPosition } from '@xyflow/react'
-import { useMemo } from 'react'
 import { RopeEdge, type RopeFlowEdge } from './RopeEdge'
 import '@xyflow/react/dist/style.css'
-import type { Project, TerminalNodeData } from '@shared/types'
+import type { CanvasNodeData, Project } from '@shared/types'
+import { BrowserNode, type BrowserFlowNode } from './BrowserNode'
 import { useWorkspace } from '../state/workspace'
-import { DEFAULT_TERMINAL_SIZE, findFreeSpot } from '../state/projectOps'
+import { DEFAULT_BROWSER_SIZE, DEFAULT_TERMINAL_SIZE, findFreeSpot } from '../state/projectOps'
 import { TerminalNode, type TerminalFlowNode } from './TerminalNode'
 import { NewTerminalModal } from './NewTerminalModal'
 
-const nodeTypes = { terminal: TerminalNode }
+const nodeTypes = { terminal: TerminalNode, browser: BrowserNode }
+type FlowNode = TerminalFlowNode | BrowserFlowNode
 const edgeTypes = { rope: RopeEdge }
 
-function toFlow(n: TerminalNodeData, project: Project, selected = false): TerminalFlowNode {
-  return {
-    id: n.id, type: 'terminal', position: { x: n.x, y: n.y }, width: n.width, height: n.height,
-    dragHandle: '.term-header', selected, data: { term: n, projectId: project.id, cwd: project.cwd }
-  }
+function toFlow(n: CanvasNodeData, project: Project, selected = false): FlowNode {
+  const base = { id: n.id, position: { x: n.x, y: n.y }, width: n.width, height: n.height, dragHandle: '.term-header', selected }
+  return n.kind === 'browser'
+    ? { ...base, type: 'browser', data: { browser: n, projectId: project.id } }
+    : { ...base, type: 'terminal', data: { term: n, projectId: project.id, cwd: project.cwd } }
 }
 
 function CanvasInner({ project }: { project: Project }) {
   const addTerminal = useWorkspace((s) => s.addTerminal)
+  const addBrowser = useWorkspace((s) => s.addBrowser)
   const moveNodes = useWorkspace((s) => s.moveNodes)
   const connect = useWorkspace((s) => s.connect)
   const disconnect = useWorkspace((s) => s.disconnect)
@@ -31,7 +33,7 @@ function CanvasInner({ project }: { project: Project }) {
     data: { active: Boolean(flows[[e.source, e.target].sort().join('|')]), onRemove: () => disconnect(project.id, e.id) }
   })), [project.edges, project.id, flows, disconnect])
   const setViewport = useWorkspace((s) => s.setViewport)
-  const [nodes, setNodes, onNodesChange] = useNodesState<TerminalFlowNode>(project.nodes.map((n) => toFlow(n, project)))
+  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(project.nodes.map((n) => toFlow(n, project)))
   const [modalAt, setModalAt] = useState<XYPosition | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const rf = useReactFlow()
@@ -59,6 +61,13 @@ function CanvasInner({ project }: { project: Project }) {
     >
       <div className="toolbar">
         <button className="primary" data-testid="new-terminal" onClick={openModalAtCenter}>+ Terminal</button>
+        <button data-testid="new-browser" onClick={() => {
+          const r = wrapRef.current!.getBoundingClientRect()
+          const c = rf.screenToFlowPosition({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
+          const at = findFreeSpot(project.nodes, { x: c.x - DEFAULT_BROWSER_SIZE.width / 2, y: c.y - DEFAULT_BROWSER_SIZE.height / 2 }, DEFAULT_BROWSER_SIZE)
+          const count = project.nodes.filter((n) => n.kind === 'browser').length
+          addBrowser(project.id, { name: count ? `Navegador ${count + 1}` : 'Navegador', color: '#3B82F6', ...at })
+        }}>+ Navegador</button>
         <button onClick={() => void rf.fitView({ padding: 0.2, duration: 300 })}>Enquadrar tudo</button>
       </div>
       <ReactFlow

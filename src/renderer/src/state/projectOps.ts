@@ -1,6 +1,7 @@
-import type { AgentId, Project, TerminalNodeData, Viewport } from '@shared/types'
+import type { AgentId, BrowserNodeData, CanvasNodeData, Project, TerminalNodeData, Viewport } from '@shared/types'
 
 export const DEFAULT_TERMINAL_SIZE = { width: 640, height: 400 }
+export const DEFAULT_BROWSER_SIZE = { width: 460, height: 340 }
 const MIN_W = 240
 const MIN_H = 140
 
@@ -9,6 +10,11 @@ export interface NewTerminalInput { agent: AgentId; name: string; color: string;
 export function addTerminal(p: Project, input: NewTerminalInput, id: string, now: string): Project {
   const node: TerminalNodeData = { id, kind: 'terminal', ...input, ...DEFAULT_TERMINAL_SIZE }
   if (!input.command) delete node.command
+  return { ...p, nodes: [...p.nodes, node], updatedAt: now }
+}
+
+export function addBrowser(p: Project, input: { name: string; color: string; x: number; y: number }, id: string, now: string): Project {
+  const node: BrowserNodeData = { id, kind: 'browser', ...input, ...DEFAULT_BROWSER_SIZE }
   return { ...p, nodes: [...p.nodes, node], updatedAt: now }
 }
 
@@ -38,7 +44,7 @@ export function updateGeometry(p: Project, nodeId: string, geo: Partial<Pick<Ter
 }
 
 export function setSessionId(p: Project, nodeId: string, sessionId: string, now: string): Project {
-  return { ...p, nodes: p.nodes.map((n) => (n.id === nodeId ? { ...n, sessionId } : n)), updatedAt: now }
+  return { ...p, nodes: p.nodes.map((n) => (n.id === nodeId && n.kind === 'terminal' ? { ...n, sessionId } : n)), updatedAt: now }
 }
 
 export function setViewport(p: Project, vp: Viewport, now: string): Project {
@@ -47,12 +53,12 @@ export function setViewport(p: Project, vp: Viewport, now: string): Project {
 
 const GAP = 24
 
-const overlaps = (a: { x: number; y: number; width: number; height: number }, b: TerminalNodeData) =>
+const overlaps = (a: { x: number; y: number; width: number; height: number }, b: CanvasNodeData) =>
   a.x < b.x + b.width + GAP && b.x < a.x + a.width + GAP && a.y < b.y + b.height + GAP && b.y < a.y + a.height + GAP
 
 /** Onde colocar um nó novo sem cobrir nenhum outro: se o lugar estiver ocupado, vai para a direita de quem ocupa. */
 export function findFreeSpot(
-  nodes: TerminalNodeData[],
+  nodes: CanvasNodeData[],
   pos: { x: number; y: number },
   size: { width: number; height: number } = DEFAULT_TERMINAL_SIZE
 ): { x: number; y: number } {

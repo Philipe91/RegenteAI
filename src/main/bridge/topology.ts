@@ -34,6 +34,13 @@ export class Topology {
     return p.nodes.filter((n) => ids.has(n.id))
   }
 
+  /** O navegador ligado a este terminal (o primeiro, se houver mais de um). */
+  browserPeer(id: string): TopoNode {
+    const b = this.peers(id).find((n) => n.kind === 'browser')
+    if (!b) throw new Error('Nenhum navegador ligado a você. No canvas, clique em "+ Navegador" e ligue-o a este terminal com uma corda.')
+    return b
+  }
+
   findPeer(id: string, name: string): TopoNode | null {
     return this.peers(id).find((n) => norm(n.name) === norm(name)) ?? null
   }

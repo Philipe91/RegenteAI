@@ -85,6 +85,22 @@ describe('ProjectStore — formato inválido (I-2)', () => {
     writeFileSync(join(dir, 'app.json'), 'null')
     expect(s.loadApp()).toEqual({ version: 1, openProjectIds: [], activeProjectId: null })
     writeFileSync(join(dir, 'app.json'), JSON.stringify({ version: 1, openProjectIds: ['ok-1', '../x', 5], activeProjectId: '../x' }))
-    expect(s.loadApp()).toEqual({ version: 1, openProjectIds: ['ok-1'], activeProjectId: null })
+    expect(s.loadApp()).toEqual({ version: 1, openProjectIds: ['ok-1'], activeProjectId: null, browser: 'auto' })
+  })
+})
+
+describe('ProjectStore — nó Navegador e preferência', () => {
+  test('projeto com nó de navegador é válido', () => {
+    const s = new ProjectStore(dir)
+    const p = { ...newProject('pb', 'C:/x', 't', 0), nodes: [{ id: 'b', kind: 'browser', name: 'Nav', color: '#fff', x: 0, y: 0, width: 420, height: 300 }] }
+    s.save(p as never)
+    expect(s.load('pb').project?.nodes[0]).toMatchObject({ kind: 'browser' })
+  })
+  test('preferência de navegador é mantida; valor estranho vira auto', () => {
+    const s = new ProjectStore(dir)
+    writeFileSync(join(dir, 'app.json'), JSON.stringify({ version: 1, openProjectIds: [], activeProjectId: null, browser: 'edge' }))
+    expect(s.loadApp().browser).toBe('edge')
+    writeFileSync(join(dir, 'app.json'), JSON.stringify({ version: 1, openProjectIds: [], activeProjectId: null, browser: 'netscape' }))
+    expect(s.loadApp().browser).toBe('auto')
   })
 })

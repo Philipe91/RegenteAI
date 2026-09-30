@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { newProject } from '@shared/types'
-import { addEdge, addTerminal, DEFAULT_TERMINAL_SIZE, findFreeSpot, projectIdForNode, removeEdge, removeNode, updateGeometries, setSessionId, setViewport, updateGeometry } from '../../src/renderer/src/state/projectOps'
+import { addBrowser, addEdge, addTerminal, DEFAULT_BROWSER_SIZE, DEFAULT_TERMINAL_SIZE, findFreeSpot, projectIdForNode, removeEdge, removeNode, updateGeometries, setSessionId, setViewport, updateGeometry } from '../../src/renderer/src/state/projectOps'
 
 const T0 = '2026-09-30T12:00:00.000Z'
 const T1 = '2026-09-30T12:05:00.000Z'
@@ -98,5 +98,17 @@ describe('cordas (addEdge/removeEdge)', () => {
     expect(p.edges).toEqual([])
     p = removeEdge(addEdge(p, 'a', 'b', 'e2', T1), 'e2', T1)
     expect(p.edges).toEqual([])
+  })
+})
+
+describe('nó Navegador', () => {
+  test('addBrowser cria nó kind browser com tamanho próprio', () => {
+    let p = addTerminal(base(), { agent: 'claude', name: 'C', color: '#fff', x: 0, y: 0 }, 'c', T1)
+    p = addBrowser(p, { name: 'Navegador', color: '#3B82F6', x: 0, y: 0 }, 'b', T1)
+    expect(p.nodes[1]).toEqual({ id: 'b', kind: 'browser', name: 'Navegador', color: '#3B82F6', x: 0, y: 0, ...DEFAULT_BROWSER_SIZE })
+  })
+  test('setSessionId ignora nó de navegador', () => {
+    const p = addBrowser(base(), { name: 'N', color: '#fff', x: 0, y: 0 }, 'b', T1)
+    expect(setSessionId(p, 'b', 'x', T1).nodes[0]).not.toHaveProperty('sessionId')
   })
 })

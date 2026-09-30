@@ -13,6 +13,8 @@ import { RegenteIntegration } from './bridge/integration'
 import { registerBridgeRoutes } from './bridge/routes'
 import { AskBroker } from './bridge/askBroker'
 import { IPC } from '@shared/ipc'
+import { BrowserManager } from './browser/manager'
+import { chooseBrowser, detectBrowsers, readDefaultProgId } from './browser/detect'
 
 const dataDir = process.env.REGENTE_DATA_DIR ?? join(app.getPath('appData'), 'Regente')
 // A trava de instância única vale por pasta de dados (testes usam pastas próprias).
@@ -26,6 +28,10 @@ if (!app.requestSingleInstanceLock()) {
   const pty = new PtyManager(nodePtyFactory)
   const bridge = new Bridge()
   const topology = new Topology()
+  const browsers = new BrowserManager({
+    profilesDir: join(dataDir, 'browsers'),
+    resolveBrowser: () => chooseBrowser(store.loadApp().browser ?? 'auto', detectBrowsers(), readDefaultProgId())
+  })
   let win: BrowserWindow | null = null
 
   const start = async (): Promise<void> => {
@@ -40,14 +46,15 @@ if (!app.requestSingleInstanceLock()) {
       onGone: (cb) => terminals.on('gone', cb),
       supportsHooks: (id) => topology.node(id)?.node.agent === 'claude'
     })
-    registerBridgeRoutes(bridge, { topology, pty, broker })
+    const flow = (from: string, to: string, active: boolean) => { if (win && !win.isDestroyed()) win.webContents.send(IPC.termFlow, from, to, active) }
+    registerBridgeRoutes(bridge, { topology, pty, broker, browsers, onFlow: flow })
 
     win = new BrowserWindow({
       width: 1400, height: 900, backgroundColor: '#101010', title: 'Regente', autoHideMenuBar: true,
       webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true }
     })
     guardWebContents(win.webContents, (u) => void shell.openExternal(u))
-    registerIpc(win, store, terminals, pty, topology)
+    registerIpc(win, store, terminals, pty, topology, browsers)
     const send = (channel: string, ...args: unknown[]) => { if (win && !win.isDestroyed()) win.webContents.send(channel, ...args) }
     broker.on('status', (id: string, s: string) => send(IPC.termStatus, id, s))
     broker.on('flow', (from: string, to: string, active: boolean) => send(IPC.termFlow, from, to, active))
@@ -61,6 +68,6 @@ if (!app.requestSingleInstanceLock()) {
     win.focus()
   })
   app.whenReady().then(start)
-  app.on('before-quit', () => { pty.killAll(); void bridge.close() })
+  app.on('before-quit', () => { pty.killAll(); void browsers.closeAll(); void bridge.close() })
   app.on('window-all-closed', () => app.quit())
 }

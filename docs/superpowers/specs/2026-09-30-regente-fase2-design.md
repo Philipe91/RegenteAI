@@ -1,6 +1,6 @@
 # Regente — Fase 2: agentes conversando + navegador
 
-**Data:** 2026-09-30 · **Base:** spec geral `2026-09-30-regente-design.md` (seção 5) · **Status:** em implementação (Philipe autorizou seguir direto, com commit + push a cada avanço)
+**Data:** 2026-09-30 · **Base:** spec geral `2026-09-30-regente-design.md` (seção 5) · **Status:** implementado (Codex/Gemini ficam para depois)
 
 ## 1. Objetivo
 1. Um agente pede algo a outro agente ligado por uma corda e recebe a resposta sozinho (`regente ask`).

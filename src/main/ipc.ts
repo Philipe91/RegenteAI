@@ -8,8 +8,10 @@ import type { PtyManager } from './pty/ptyManager'
 import { availableAgents } from './agents/adapters'
 import { isExternalUrl } from './security'
 import type { Topology, TopoNode } from './bridge/topology'
+import type { BrowserManager } from './browser/manager'
+import { runBrowserCommand } from './browser/commands'
 
-export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: TerminalService, pty: PtyManager, topology: Topology): void {
+export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: TerminalService, pty: PtyManager, topology: Topology, browsers: BrowserManager): void {
   const send = (channel: string, ...args: unknown[]) => { if (!win.isDestroyed()) win.webContents.send(channel, ...args) }
 
   ipcMain.handle(IPC.projectsList, () => store.list())
@@ -28,6 +30,16 @@ export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: 
   ipcMain.handle(IPC.appLoad, () => store.loadApp())
   ipcMain.handle(IPC.appSave, (_e, s: AppState) => store.saveApp(s))
   ipcMain.handle(IPC.agentsAvailable, () => availableAgents())
+  const attempt = async (fn: () => Promise<unknown>) => {
+    try { await fn(); return { ok: true } } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) } }
+  }
+  ipcMain.handle(IPC.browserOpen, (_e, nodeId: string) => attempt(() => runBrowserCommand(browsers, nodeId, 'open', [])))
+  ipcMain.handle(IPC.browserClose, (_e, nodeId: string) => attempt(() => browsers.close(nodeId)))
+  ipcMain.handle(IPC.browserGoto, (_e, nodeId: string, url: string) => attempt(async () => {
+    await runBrowserCommand(browsers, nodeId, 'open', [])
+    await runBrowserCommand(browsers, nodeId, 'goto', [url])
+  }))
+  browsers.on('state', (nodeId: string, state: unknown) => send(IPC.browserState, nodeId, state))
   ipcMain.on(IPC.topologyUpdate, (_e, projectId: string, nodes: TopoNode[], edges: EdgeData[]) => topology.update(projectId, nodes, edges))
   ipcMain.on(IPC.topologyRemove, (_e, projectId: string) => topology.remove(projectId))
   ipcMain.on(IPC.openExternal, (_e, url: string) => { if (isExternalUrl(url)) void shell.openExternal(url) })

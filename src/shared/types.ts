@@ -17,6 +17,33 @@ export interface TerminalNodeData {
   command?: string
 }
 
+/** Nó que representa o navegador real do usuário, controlado pelos agentes ligados a ele. */
+export interface BrowserNodeData {
+  id: string
+  kind: 'browser'
+  name: string
+  color: string
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export type CanvasNodeData = TerminalNodeData | BrowserNodeData
+
+export type BrowserPref = 'auto' | 'chrome' | 'edge' | 'brave'
+export const BROWSER_PREFS: BrowserPref[] = ['auto', 'chrome', 'edge', 'brave']
+
+/** O que a interface mostra de um nó Navegador (vem do motor). */
+export interface BrowserUiState {
+  status: 'opening' | 'open' | 'closed'
+  browser?: string
+  title?: string
+  url?: string
+  note?: string
+  preview?: string
+}
+
 export interface EdgeData { id: string; source: string; target: string }
 export interface Viewport { x: number; y: number; zoom: number }
 
@@ -26,7 +53,7 @@ export interface Project {
   name: string
   cwd: string
   color: string
-  nodes: TerminalNodeData[]
+  nodes: CanvasNodeData[]
   edges: EdgeData[]
   viewport: Viewport
   createdAt: string
@@ -35,7 +62,7 @@ export interface Project {
 
 export interface ProjectSummary { id: string; name: string; cwd: string; color: string; updatedAt: string }
 
-export interface AppState { version: number; openProjectIds: string[]; activeProjectId: string | null }
+export interface AppState { version: number; openProjectIds: string[]; activeProjectId: string | null; browser?: BrowserPref }
 
 export interface AgentInfo { id: AgentId; label: string; available: boolean }
 

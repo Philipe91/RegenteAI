@@ -1,4 +1,4 @@
-import type { EdgeData, AgentInfo, AppState, LoadResult, Project, ProjectSummary, StartTerminalRequest, StartTerminalResult } from './types'
+import type { BrowserUiState, EdgeData, AgentInfo, AppState, LoadResult, Project, ProjectSummary, StartTerminalRequest, StartTerminalResult } from './types'
 
 export const IPC = {
   projectsList: 'projects:list',
@@ -21,6 +21,10 @@ export const IPC = {
   openExternal: 'shell:open-external',
   topologyUpdate: 'topology:update',
   termStatus: 'term:status',
+  browserOpen: 'browser:open',
+  browserClose: 'browser:close',
+  browserGoto: 'browser:goto',
+  browserState: 'browser:state',
   termFlow: 'term:flow',
   topologyRemove: 'topology:remove'
 } as const
@@ -28,6 +32,12 @@ export const IPC = {
 export interface RegenteApi {
   /** Abre http(s)/mailto no navegador do sistema; qualquer outra coisa é ignorada. */
   openExternal(url: string): void
+  browser: {
+    open(nodeId: string): Promise<{ ok: boolean; error?: string }>
+    close(nodeId: string): Promise<{ ok: boolean; error?: string }>
+    goto(nodeId: string, url: string): Promise<{ ok: boolean; error?: string }>
+    onState(cb: (nodeId: string, state: BrowserUiState) => void): () => void
+  }
   topology: {
     update(projectId: string, nodes: Array<{ id: string; name: string; agent: string; kind: 'terminal' | 'browser' }>, edges: EdgeData[]): void
     remove(projectId: string): void

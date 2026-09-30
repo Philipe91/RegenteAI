@@ -30,3 +30,12 @@ describe('Topology', () => {
     expect(t.node('s')).toBeNull()
   })
 })
+
+describe('browserPeer', () => {
+  test('acha o navegador ligado; sem navegador → erro que explica', () => {
+    const t = new Topology()
+    t.update('p1', [...nodes, { id: 'b', name: 'Navegador', agent: 'browser', kind: 'browser' as const }], [{ id: 'e', source: 'l', target: 'b' }])
+    expect(t.browserPeer('l').id).toBe('b')
+    expect(() => t.browserPeer('r')).toThrow(/Nenhum navegador ligado a você/)
+  })
+})

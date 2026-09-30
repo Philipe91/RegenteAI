@@ -9,6 +9,12 @@ function listen<A extends unknown[]>(channel: string, cb: (...args: A) => void):
 
 const api: RegenteApi = {
   openExternal: (url) => ipcRenderer.send(IPC.openExternal, url),
+  browser: {
+    open: (nodeId) => ipcRenderer.invoke(IPC.browserOpen, nodeId),
+    close: (nodeId) => ipcRenderer.invoke(IPC.browserClose, nodeId),
+    goto: (nodeId, url) => ipcRenderer.invoke(IPC.browserGoto, nodeId, url),
+    onState: (cb) => listen(IPC.browserState, cb)
+  },
   topology: {
     update: (projectId, nodes, edges) => ipcRenderer.send(IPC.topologyUpdate, projectId, nodes, edges),
     remove: (projectId) => ipcRenderer.send(IPC.topologyRemove, projectId)

@@ -20,7 +20,7 @@ let server: Server
 let url = ''
 let profiles = ''
 let manager: BrowserManager
-const states: Array<{ status: string }> = []
+const states: Array<{ status: string; url?: string; preview?: string }> = []
 
 beforeAll(async () => {
   server = createServer((_q, r) => { r.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); r.end(PAGE) })
@@ -65,6 +65,14 @@ describe('navegador real (Chrome/Edge headless)', () => {
     expect(manager.isOpen('b1')).toBe(false)
     expect(states.at(-1)?.status).toBe('closed')
   }, 90_000)
+
+  test('prévia final mostra a página carregada (captura pendente não é descartada)', async () => {
+    await runBrowserCommand(manager, 'b3', 'open', [url])
+    await new Promise((r) => setTimeout(r, 2500))
+    const withPreview = states.filter((s) => s.preview && s.url === url)
+    expect(withPreview.length).toBeGreaterThan(0)
+    await manager.close('b3')
+  }, 60_000)
 
   test('comando sem navegador aberto explica o que fazer', async () => {
     await expect(runBrowserCommand(manager, 'b2', 'snapshot', [])).rejects.toThrow(/regente browser open/)

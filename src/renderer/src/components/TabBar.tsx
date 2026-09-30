@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useWorkspace } from '../state/workspace'
+import type { BrowserPref } from '@shared/types'
 import { ProjectsMenu } from './ProjectsMenu'
 
 export function TabBar() {
@@ -11,6 +12,8 @@ export function TabBar() {
   const createProject = useWorkspace((s) => s.createProject)
   const [menu, setMenu] = useState(false)
   const activity = useWorkspace((s) => s.activity)
+  const browserPref = useWorkspace((s) => s.browserPref)
+  const setBrowserPref = useWorkspace((s) => s.setBrowserPref)
   const tabActivity = (id: string) => {
     const states = projects[id].nodes.map((n) => activity[n.id])
     return states.includes('working') ? 'working' : states.includes('attention') ? 'attention' : null
@@ -38,6 +41,14 @@ export function TabBar() {
       })}
       <button data-testid="new-project" title="Novo projeto" onClick={() => void createProject()}>+</button>
       <div className="spacer" />
+      <label className="pref" title="Qual navegador os agentes usam">Navegador
+        <select value={browserPref} onChange={(e) => setBrowserPref(e.target.value as BrowserPref)}>
+          <option value="auto">Automático (padrão do Windows)</option>
+          <option value="chrome">Chrome</option>
+          <option value="edge">Edge</option>
+          <option value="brave">Brave</option>
+        </select>
+      </label>
       <button data-testid="projects-menu" onClick={() => setMenu((m) => !m)}>Projetos</button>
       {menu && <ProjectsMenu onClose={() => setMenu(false)} />}
     </div>

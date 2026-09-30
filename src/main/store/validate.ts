@@ -1,11 +1,12 @@
-import type { AppState, Project } from '@shared/types'
+import { BROWSER_PREFS, type AppState, type BrowserPref, type Project } from '@shared/types'
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 const isStr = (v: unknown): v is string => typeof v === 'string'
 
 function isNode(v: unknown): boolean {
-  return isObj(v) && isStr(v.id) && isStr(v.agent) && isStr(v.name) && isNum(v.x) && isNum(v.y) && isNum(v.width) && isNum(v.height)
+  if (!isObj(v) || !isStr(v.id) || !isStr(v.name) || !isNum(v.x) || !isNum(v.y) || !isNum(v.width) || !isNum(v.height)) return false
+  return v.kind === 'browser' || isStr(v.agent)
 }
 
 function isEdge(v: unknown): boolean {
@@ -26,7 +27,8 @@ export function isProject(v: unknown): v is Project {
 export function sanitizeAppState(v: unknown, validId: (id: string) => boolean, version: number): AppState {
   const empty: AppState = { version, openProjectIds: [], activeProjectId: null }
   if (!isObj(v) || !Array.isArray(v.openProjectIds)) return empty
+  const browser: BrowserPref = BROWSER_PREFS.includes(v.browser as BrowserPref) ? (v.browser as BrowserPref) : 'auto'
   const openProjectIds = v.openProjectIds.filter((id): id is string => isStr(id) && validId(id))
   const active = isStr(v.activeProjectId) && openProjectIds.includes(v.activeProjectId) ? v.activeProjectId : null
-  return { version, openProjectIds, activeProjectId: active }
+  return { version, openProjectIds, activeProjectId: active, browser }
 }

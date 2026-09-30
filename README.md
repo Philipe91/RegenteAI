@@ -40,3 +40,26 @@ O `npm install` baixa o Electron (~100 MB) na primeira vez. O script `postinstal
 
 ## Primeira vez com o Claude numa pasta
 O Claude Code pergunta se você confia na pasta. A opção padrão é **"No, exit"** — use a seta ↓ para escolher **"Yes, I trust this folder"** e Enter. É uma vez por pasta.
+
+## Agentes conversando (cordas)
+1. Crie dois terminais Claude (ex.: **Líder** e **Revisor**).
+2. Arraste da bolinha na lateral de um até o outro: aparece uma **corda**.
+3. Peça ao Líder: *"pergunte ao Revisor se o login.ts está ok"*. Ele roda `regente ask Revisor "..."`, a mensagem chega no Revisor e a resposta volta sozinha.
+
+A corda fica laranja e animada enquanto a mensagem trafega. No cabeçalho de cada nó (e na aba) aparece **trabalhando** (amarelo) ou **pronto** (verde, até você clicar no nó). Para desligar: clique na corda e no ×.
+
+Comandos que os agentes usam (e você também pode usar em qualquer terminal do Regente):
+
+| Comando | O que faz |
+|---|---|
+| `regente peers` | quem está ligado a este terminal |
+| `regente ask <nome> "<mensagem>"` | pede e espera a resposta (padrão 10 min; `--timeout <min>`) |
+| `regente browser <ação>` | controla o navegador ligado |
+| `regente help` | ajuda |
+
+## Navegador
+- Clique em **+ Navegador** e ligue-o com uma corda ao terminal do agente.
+- O Regente abre o **seu navegador de verdade** (Chrome, Edge ou Brave), numa janela própria com **perfil separado por projeto**: logins feitos ali ficam salvos e não se misturam com o seu navegador pessoal.
+- Escolha qual navegador em **Navegador ▾** no canto superior direito. "Automático" usa o padrão do Windows (Firefox ainda não é suportado para automação).
+- O nó mostra o endereço, o título e uma prévia da página; dá para digitar um endereço na barra dele.
+- Ações do agente: `open [url]`, `goto <url>`, `back`, `reload`, `snapshot` (texto + elementos numerados), `click <n>`, `type <n> <texto>`, `press <tecla>`, `screenshot`, `eval "<js>"`, `console`, `tabs`, `tab <n>`, `endpoint` (URL CDP para outras ferramentas).
