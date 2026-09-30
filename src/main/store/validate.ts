@@ -30,5 +30,5 @@ export function sanitizeAppState(v: unknown, validId: (id: string) => boolean, v
   const browser: BrowserPref = BROWSER_PREFS.includes(v.browser as BrowserPref) ? (v.browser as BrowserPref) : 'auto'
   const openProjectIds = v.openProjectIds.filter((id): id is string => isStr(id) && validId(id))
   const active = isStr(v.activeProjectId) && openProjectIds.includes(v.activeProjectId) ? v.activeProjectId : null
-  return { version, openProjectIds, activeProjectId: active, browser }
+  return { version, openProjectIds, activeProjectId: active, browser, notify: v.notify !== false }
 }

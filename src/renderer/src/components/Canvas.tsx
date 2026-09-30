@@ -28,6 +28,7 @@ function CanvasInner({ project }: { project: Project }) {
   const disconnect = useWorkspace((s) => s.disconnect)
   const markSeen = useWorkspace((s) => s.markSeen)
   const flows = useWorkspace((s) => s.flows)
+  const focusRequest = useWorkspace((s) => s.focusRequest)
   const edges = useMemo<RopeFlowEdge[]>(() => project.edges.map((e) => ({
     id: e.id, source: e.source, target: e.target, type: 'rope',
     data: { active: Boolean(flows[[e.source, e.target].sort().join('|')]), onRemove: () => disconnect(project.id, e.id) }
@@ -42,6 +43,13 @@ function CanvasInner({ project }: { project: Project }) {
   useEffect(() => {
     setNodes((prev) => project.nodes.map((n) => toFlow(n, project, prev.find((p) => p.id === n.id)?.selected ?? false)))
   }, [project, setNodes])
+
+  // Clique numa notificação: centraliza o nó que terminou.
+  useEffect(() => {
+    if (!focusRequest || !project.nodes.some((n) => n.id === focusRequest.nodeId)) return
+    const t = setTimeout(() => void rf.fitView({ nodes: [{ id: focusRequest.nodeId }], padding: 0.3, duration: 400, maxZoom: 1 }), 50)
+    return () => clearTimeout(t)
+  }, [focusRequest, project.nodes, rf])
 
   const openModalAtCenter = useCallback(() => {
     const r = wrapRef.current!.getBoundingClientRect()

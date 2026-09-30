@@ -42,7 +42,8 @@ const api: RegenteApi = {
     onNotice: (cb) => listen(IPC.termNotice, cb),
     onSession: (cb) => listen(IPC.termSession, cb),
     onStatus: (cb) => listen(IPC.termStatus, cb),
-    onFlow: (cb) => listen(IPC.termFlow, cb)
+    onFlow: (cb) => listen(IPC.termFlow, cb),
+    onFocus: (cb) => listen(IPC.termFocus, cb)
   }
 }
 

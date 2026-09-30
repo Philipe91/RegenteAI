@@ -1,4 +1,5 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, Notification, shell } from 'electron'
+import { notificationFor } from './notify/notify'
 import { join } from 'node:path'
 import { ProjectStore } from './store/projectStore'
 import { PtyManager } from './pty/ptyManager'
@@ -19,6 +20,9 @@ import { chooseBrowser, detectBrowsers, readDefaultProgId } from './browser/dete
 const dataDir = process.env.REGENTE_DATA_DIR ?? join(app.getPath('appData'), 'Regente')
 // A trava de instância única vale por pasta de dados (testes usam pastas próprias).
 if (process.env.REGENTE_DATA_DIR) app.setPath('userData', join(dataDir, 'electron'))
+
+// Necessário para as notificações do Windows mostrarem o nome certo.
+app.setAppUserModelId('com.regente.app')
 
 if (!app.requestSingleInstanceLock()) {
   // Já existe um Regente aberto: dois retomariam as mesmas sessões do Claude ao mesmo tempo.
@@ -58,6 +62,22 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc(win, store, terminals, pty, topology, browsers)
     const send = (channel: string, ...args: unknown[]) => { if (win && !win.isDestroyed()) win.webContents.send(channel, ...args) }
     broker.on('status', (id: string, s: string) => send(IPC.termStatus, id, s))
+    broker.on('turn-end', (id: string, message: string) => {
+      const name = topology.node(id)?.node.name
+      if (!name || !win || win.isDestroyed() || !Notification.isSupported()) return
+      const n = notificationFor({ name, message, focused: win.isFocused() && !win.isMinimized() && win.isVisible(), enabled: store.loadApp().notify !== false })
+      if (!n) return
+      const toast = new Notification({ title: n.title, body: n.body, silent: false })
+      toast.on('click', () => {
+        if (!win || win.isDestroyed()) return
+        if (win.isMinimized()) win.restore()
+        win.show()
+        win.focus()
+        send(IPC.termFocus, id)
+      })
+      toast.show()
+      console.log(`[regente] notificação: ${n.title} — ${n.body}`)
+    })
     broker.on('flow', (from: string, to: string, active: boolean) => send(IPC.termFlow, from, to, active))
     if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
     else win.loadFile(join(__dirname, '../renderer/index.html'))

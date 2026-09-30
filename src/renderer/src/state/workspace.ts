@@ -19,6 +19,10 @@ interface WorkspaceState {
   flows: Record<string, true>
   browserStates: Record<string, BrowserUiState>
   browserPref: BrowserPref
+  notifyPref: boolean
+  setNotifyPref(on: boolean): void
+  /** Pedido para centralizar um nó (ex.: clique numa notificação). */
+  focusRequest: { nodeId: string; at: number } | null
   setBrowserPref(pref: BrowserPref): void
   addBrowser(projectId: string, input: { name: string; color: string; x: number; y: number }): void
   init(): Promise<void>
@@ -51,7 +55,7 @@ let toastSeq = 0
 export const useWorkspace = create<WorkspaceState>((set, get) => {
   const saveApp = () => {
     const { openIds, activeId } = get()
-    void window.regente.app.save({ version: 1, openProjectIds: openIds, activeProjectId: activeId, browser: get().browserPref })
+    void window.regente.app.save({ version: 1, openProjectIds: openIds, activeProjectId: activeId, browser: get().browserPref, notify: get().notifyPref })
   }
   const mutate = (projectId: string, fn: (p: Project) => Project) => {
     const p = get().projects[projectId]
@@ -63,7 +67,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
   }
 
   return {
-    ready: false, projects: {}, openIds: [], activeId: null, agents: [], toasts: [], activity: {}, flows: {}, browserStates: {}, browserPref: 'auto',
+    ready: false, projects: {}, openIds: [], activeId: null, agents: [], toasts: [], activity: {}, flows: {}, browserStates: {}, browserPref: 'auto', notifyPref: true, focusRequest: null,
 
     async init() {
       const [appState, agents] = await Promise.all([window.regente.app.load(), window.regente.agents.available()])
@@ -81,6 +85,13 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         const { [nodeId]: prev, ...rest } = get().activity
         if (status === 'working') set({ activity: { ...rest, [nodeId]: 'working' } })
         else set({ activity: prev === 'working' ? { ...rest, [nodeId]: 'attention' } : rest })
+      })
+      window.regente.term.onFocus((nodeId) => {
+        const pid = ops.projectIdForNode(get().projects, nodeId)
+        if (!pid) return
+        get().setActive(pid)
+        set({ focusRequest: { nodeId, at: Date.now() } })
+        get().markSeen(nodeId)
       })
       window.regente.browser.onState((nodeId, state) => {
         const prev = get().browserStates[nodeId]
@@ -101,7 +112,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const openIds = appState.openProjectIds.filter((id) => projects[id])
       const activeId = appState.activeProjectId && projects[appState.activeProjectId] ? appState.activeProjectId : openIds[0] ?? null
       Object.values(projects).forEach(syncTopology)
-      set({ ready: true, projects, openIds, activeId, agents, browserPref: appState.browser ?? 'auto' })
+      set({ ready: true, projects, openIds, activeId, agents, browserPref: appState.browser ?? 'auto', notifyPref: appState.notify !== false })
     },
 
     async createProject() {
@@ -150,6 +161,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     updateGeometry(projectId, nodeId, geo) { mutate(projectId, (p) => ops.updateGeometry(p, nodeId, geo, now())) },
     moveNodes(projectId, updates) { mutate(projectId, (p) => ops.updateGeometries(p, updates, now())) },
     setBrowserPref(pref) { set({ browserPref: pref }); saveApp() },
+    setNotifyPref(on) { set({ notifyPref: on }); saveApp() },
     addBrowser(projectId, input) { mutate(projectId, (p) => ops.addBrowser(p, input, crypto.randomUUID(), now())) },
     connect(projectId, source, target) { mutate(projectId, (p) => ops.addEdge(p, source, target, crypto.randomUUID(), now())) },
     disconnect(projectId, edgeId) { mutate(projectId, (p) => ops.removeEdge(p, edgeId, now())) },

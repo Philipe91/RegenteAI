@@ -247,3 +247,15 @@ describe('AskBroker — estado', () => {
     await fail
   })
 })
+
+describe('AskBroker — fim de turno (para notificações)', () => {
+  test('emite turn-end com a mensagem final; Stop intermediário não emite', () => {
+    const { broker } = setup()
+    const ends: unknown[] = []
+    broker.on('turn-end', (...a) => ends.push(a))
+    broker.hook('r', 'prompt', { prompt: 'faça' })
+    broker.hook('r', 'stop', { stop_hook_active: true, last_assistant_message: 'parcial' })
+    broker.hook('r', 'stop', { last_assistant_message: 'pronto' })
+    expect(ends).toEqual([['r', 'pronto']])
+  })
+})

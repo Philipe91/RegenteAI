@@ -21,6 +21,7 @@ export const IPC = {
   openExternal: 'shell:open-external',
   topologyUpdate: 'topology:update',
   termStatus: 'term:status',
+  termFocus: 'term:focus',
   browserOpen: 'browser:open',
   browserClose: 'browser:close',
   browserGoto: 'browser:goto',
@@ -63,5 +64,6 @@ export interface RegenteApi {
     onSession(cb: (id: string, sessionId: string) => void): () => void
     onStatus(cb: (id: string, status: 'idle' | 'working') => void): () => void
     onFlow(cb: (from: string, to: string, active: boolean) => void): () => void
+    onFocus(cb: (id: string) => void): () => void
   }
 }

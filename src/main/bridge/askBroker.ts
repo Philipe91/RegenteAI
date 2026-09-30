@@ -144,6 +144,7 @@ export class AskBroker extends EventEmitter {
     // Outro hook do usuário mandou o Claude continuar: o turno ainda não acabou.
     if (p.stop_hook_active === true) return
     this.setStatus(id, 'idle')
+    this.emit('turn-end', id, typeof p.last_assistant_message === 'string' ? p.last_assistant_message : '')
     if (job?.accepted) this.finish(job, typeof p.last_assistant_message === 'string' ? p.last_assistant_message : '')
     this.pump(id)
   }

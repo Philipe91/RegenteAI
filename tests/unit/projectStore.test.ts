@@ -85,7 +85,7 @@ describe('ProjectStore — formato inválido (I-2)', () => {
     writeFileSync(join(dir, 'app.json'), 'null')
     expect(s.loadApp()).toEqual({ version: 1, openProjectIds: [], activeProjectId: null })
     writeFileSync(join(dir, 'app.json'), JSON.stringify({ version: 1, openProjectIds: ['ok-1', '../x', 5], activeProjectId: '../x' }))
-    expect(s.loadApp()).toEqual({ version: 1, openProjectIds: ['ok-1'], activeProjectId: null, browser: 'auto' })
+    expect(s.loadApp()).toEqual({ version: 1, openProjectIds: ['ok-1'], activeProjectId: null, browser: 'auto', notify: true })
   })
 })
 
@@ -103,4 +103,14 @@ describe('ProjectStore — nó Navegador e preferência', () => {
     writeFileSync(join(dir, 'app.json'), JSON.stringify({ version: 1, openProjectIds: [], activeProjectId: null, browser: 'netscape' }))
     expect(s.loadApp().browser).toBe('auto')
   })
+})
+
+test('preferência de avisos: padrão ligado, respeita false', () => {
+  const d = mkdtempSync(join(tmpdir(), 'rg notify '))
+  const s = new ProjectStore(d)
+  writeFileSync(join(d, 'app.json'), JSON.stringify({ version: 1, openProjectIds: [], activeProjectId: null }))
+  expect(s.loadApp().notify).toBe(true)
+  writeFileSync(join(d, 'app.json'), JSON.stringify({ version: 1, openProjectIds: [], activeProjectId: null, notify: false }))
+  expect(s.loadApp().notify).toBe(false)
+  rmSync(d, { recursive: true, force: true })
 })

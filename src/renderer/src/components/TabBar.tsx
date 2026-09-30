@@ -14,6 +14,8 @@ export function TabBar() {
   const activity = useWorkspace((s) => s.activity)
   const browserPref = useWorkspace((s) => s.browserPref)
   const setBrowserPref = useWorkspace((s) => s.setBrowserPref)
+  const notifyPref = useWorkspace((s) => s.notifyPref)
+  const setNotifyPref = useWorkspace((s) => s.setNotifyPref)
   const tabActivity = (id: string) => {
     const states = projects[id].nodes.map((n) => activity[n.id])
     return states.includes('working') ? 'working' : states.includes('attention') ? 'attention' : null
@@ -41,6 +43,9 @@ export function TabBar() {
       })}
       <button data-testid="new-project" title="Novo projeto" onClick={() => void createProject()}>+</button>
       <div className="spacer" />
+      <label className="pref" title="Notificação do Windows quando um agente termina e o Regente está em segundo plano">
+        <input type="checkbox" checked={notifyPref} onChange={(e) => setNotifyPref(e.target.checked)} /> Avisos
+      </label>
       <label className="pref" title="Qual navegador os agentes usam">Navegador
         <select value={browserPref} onChange={(e) => setBrowserPref(e.target.value as BrowserPref)}>
           <option value="auto">Automático (padrão do Windows)</option>

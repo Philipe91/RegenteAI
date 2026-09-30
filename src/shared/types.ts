@@ -65,7 +65,7 @@ export interface Project {
 
 export interface ProjectSummary { id: string; name: string; cwd: string; color: string; updatedAt: string }
 
-export interface AppState { version: number; openProjectIds: string[]; activeProjectId: string | null; browser?: BrowserPref }
+export interface AppState { version: number; openProjectIds: string[]; activeProjectId: string | null; browser?: BrowserPref; notify?: boolean }
 
 export interface AgentInfo { id: AgentId; label: string; available: boolean }
 
