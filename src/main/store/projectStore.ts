@@ -2,9 +2,12 @@ import { mkdirSync, readdirSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
 import { APP_VERSION, PROJECT_VERSION, type AppState, type LoadResult, type Project, type ProjectSummary } from '@shared/types'
 import { readJsonSafe, writeJsonAtomic } from './atomicJson'
+import { isProject, sanitizeAppState } from './validate'
 
 const ID_RE = /^[A-Za-z0-9-]+$/
 const FILE_RE = /^[A-Za-z0-9-]+\.json$/
+
+export const isValidProjectId = (id: string): boolean => ID_RE.test(id)
 
 export class ProjectStore {
   private readonly projectsDir: string
@@ -15,7 +18,7 @@ export class ProjectStore {
   }
 
   private file(id: string): string {
-    if (!ID_RE.test(id)) throw new Error(`id inválido: ${id}`)
+    if (!isValidProjectId(id)) throw new Error(`id inválido: ${id}`)
     return join(this.projectsDir, `${id}.json`)
   }
 
@@ -32,16 +35,17 @@ export class ProjectStore {
     const path = this.file(id)
     const r = readJsonSafe(path)
     if (!r.ok && r.reason === 'missing') return { project: null, warning: `Projeto ${id} não encontrado.` }
-    if (!r.ok) {
+    const value = r.ok ? r.value : null
+    const version = typeof value === 'object' && value !== null ? (value as { version?: unknown }).version : undefined
+    if (typeof version === 'number' && version > PROJECT_VERSION) {
+      return { project: null, warning: `O projeto ${id} foi salvo por uma versão mais nova do Regente. Atualize o app.` }
+    }
+    if (!r.ok || !isProject(value)) {
       const stamp = new Date().toISOString().replace(/[:.]/g, '-')
       renameSync(path, join(this.projectsDir, `${id}.corrupt-${stamp}.json`))
       return { project: null, warning: `O projeto ${id} estava corrompido. Uma cópia foi guardada como ${id}.corrupt-${stamp}.json.` }
     }
-    const p = r.value as Project
-    if (typeof p.version !== 'number' || p.version > PROJECT_VERSION) {
-      return { project: null, warning: `O projeto ${id} foi salvo por uma versão mais nova do Regente. Atualize o app.` }
-    }
-    return { project: p }
+    return { project: value }
   }
 
   save(p: Project): void {
@@ -50,8 +54,7 @@ export class ProjectStore {
 
   loadApp(): AppState {
     const r = readJsonSafe(join(this.baseDir, 'app.json'))
-    if (!r.ok) return { version: APP_VERSION, openProjectIds: [], activeProjectId: null }
-    return r.value as AppState
+    return sanitizeAppState(r.ok ? r.value : null, isValidProjectId, APP_VERSION)
   }
 
   saveApp(s: AppState): void {

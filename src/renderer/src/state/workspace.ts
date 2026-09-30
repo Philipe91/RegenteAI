@@ -20,6 +20,7 @@ interface WorkspaceState {
   addTerminal(projectId: string, input: ops.NewTerminalInput): void
   removeNode(projectId: string, nodeId: string): void
   updateGeometry(projectId: string, nodeId: string, geo: Partial<Pick<TerminalNodeData, 'x' | 'y' | 'width' | 'height'>>): void
+  moveNodes(projectId: string, updates: ops.GeometryUpdate[]): void
   setViewport(projectId: string, vp: Viewport): void
   setSessionId(projectId: string, nodeId: string, sessionId: string): void
   toast(message: string): void
@@ -51,10 +52,19 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const [appState, agents] = await Promise.all([window.regente.app.load(), window.regente.agents.available()])
       const projects: Record<string, Project> = {}
       for (const id of appState.openProjectIds) {
-        const r = await window.regente.projects.load(id)
-        if (r.project) projects[id] = r.project
-        if (r.warning) get().toast(r.warning)
+        try {
+          const r = await window.regente.projects.load(id)
+          if (r.project) projects[id] = r.project
+          if (r.warning) get().toast(r.warning)
+        } catch (e) {
+          get().toast(`Não foi possível abrir o projeto ${id}: ${e instanceof Error ? e.message : String(e)}`)
+        }
       }
+      // A sessão pode mudar com o terminal fora da tela (aba em segundo plano): registra onde ele estiver.
+      window.regente.term.onSession((nodeId, sid) => {
+        const pid = ops.projectIdForNode(get().projects, nodeId)
+        if (pid) get().setSessionId(pid, nodeId, sid)
+      })
       const openIds = appState.openProjectIds.filter((id) => projects[id])
       const activeId = appState.activeProjectId && projects[appState.activeProjectId] ? appState.activeProjectId : openIds[0] ?? null
       set({ ready: true, projects, openIds, activeId, agents })
@@ -99,6 +109,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     },
 
     updateGeometry(projectId, nodeId, geo) { mutate(projectId, (p) => ops.updateGeometry(p, nodeId, geo, now())) },
+    moveNodes(projectId, updates) { mutate(projectId, (p) => ops.updateGeometries(p, updates, now())) },
     setViewport(projectId, vp) { mutate(projectId, (p) => ops.setViewport(p, vp, now())) },
     setSessionId(projectId, nodeId, sid) { mutate(projectId, (p) => ops.setSessionId(p, nodeId, sid, now())) },
 

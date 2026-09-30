@@ -67,3 +67,24 @@ describe('ProjectStore', () => {
     expect(() => s.load('..\\fora')).toThrow(/id inválido/)
   })
 })
+
+describe('ProjectStore — formato inválido (I-2)', () => {
+  const bad = ['{"version":1}', 'null', '[]', '{"version":1,"id":"p9","name":"x","cwd":"C:/x","color":"#fff","nodes":"nao","edges":[],"viewport":{"x":0,"y":0,"zoom":1},"createdAt":"t","updatedAt":"t"}']
+  for (const raw of bad) {
+    test(`JSON válido mas formato errado vira corrompido: ${raw.slice(0, 20)}`, () => {
+      const s = new ProjectStore(dir)
+      writeFileSync(join(dir, 'projects', 'p9.json'), raw)
+      const r = s.load('p9')
+      expect(r.project).toBeNull()
+      expect(r.warning).toMatch(/corrompido/i)
+      expect(readdirSync(join(dir, 'projects')).some((f) => f.startsWith('p9.corrupt-'))).toBe(true)
+    })
+  }
+  test('app.json com formato errado volta ao padrão; ids inválidos são descartados', () => {
+    const s = new ProjectStore(dir)
+    writeFileSync(join(dir, 'app.json'), 'null')
+    expect(s.loadApp()).toEqual({ version: 1, openProjectIds: [], activeProjectId: null })
+    writeFileSync(join(dir, 'app.json'), JSON.stringify({ version: 1, openProjectIds: ['ok-1', '../x', 5], activeProjectId: '../x' }))
+    expect(s.loadApp()).toEqual({ version: 1, openProjectIds: ['ok-1'], activeProjectId: null })
+  })
+})

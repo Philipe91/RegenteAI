@@ -8,6 +8,7 @@ function listen<A extends unknown[]>(channel: string, cb: (...args: A) => void):
 }
 
 const api: RegenteApi = {
+  openExternal: (url) => ipcRenderer.send(IPC.openExternal, url),
   projects: {
     list: () => ipcRenderer.invoke(IPC.projectsList),
     load: (id) => ipcRenderer.invoke(IPC.projectsLoad, id),

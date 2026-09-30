@@ -25,7 +25,9 @@ function TerminalNodeView({ data, selected }: NodeProps<TerminalFlowNode>) {
   useEffect(() => {
     const xterm = new Terminal({
       fontFamily: '"Cascadia Mono", Consolas, monospace', fontSize: 13, cursorBlink: true, scrollback: 5000,
-      theme: { background: '#141414', foreground: '#ece7df', cursor: '#F25C1F' }
+      theme: { background: '#141414', foreground: '#ece7df', cursor: '#F25C1F' },
+      // Links (OSC 8) abrem no navegador do sistema, nunca numa janela do app.
+      linkHandler: { activate: (_e, uri) => window.regente.openExternal(uri) }
     })
     const fit = new FitAddon()
     xterm.loadAddon(fit)
@@ -38,8 +40,7 @@ function TerminalNodeView({ data, selected }: NodeProps<TerminalFlowNode>) {
     const offs = [
       termBus.onData(t.id, (d) => { if (ready) xterm.write(d) }),
       termBus.onExit(t.id, (code) => setBanner({ text: `Processo encerrado (código ${code}).`, kind: 'exit' })),
-      termBus.onNotice(t.id, (msg) => setBanner({ text: msg, kind: 'info' })),
-      termBus.onSession(t.id, (sid) => setSessionId(projectId, t.id, sid))
+      termBus.onNotice(t.id, (msg) => setBanner({ text: msg, kind: 'info' }))
     ]
     const input = xterm.onData((d) => window.regente.term.write(t.id, d))
 
@@ -47,13 +48,16 @@ function TerminalNodeView({ data, selected }: NodeProps<TerminalFlowNode>) {
     const run = runKey === 0
       ? window.regente.term.start(req)
       : window.regente.term.restart(t.id).then((r) => r ?? window.regente.term.start(req))
-    void run.then((res) => {
+    run.then((res) => {
+      if (res.sessionId && res.sessionId !== t.sessionId) setSessionId(projectId, t.id, res.sessionId)
       if (disposed) return
       if (res.error) { setBanner({ text: res.error, kind: 'error' }); return }
       if (res.buffer) xterm.write(res.buffer)
       ready = true
-      if (res.sessionId && res.sessionId !== t.sessionId) setSessionId(projectId, t.id, res.sessionId)
-      window.regente.term.resize(t.id, xterm.cols, xterm.rows)
+      if (res.exitCode !== undefined) setBanner({ text: `Processo encerrado (código ${res.exitCode}).`, kind: 'exit' })
+      else window.regente.term.resize(t.id, xterm.cols, xterm.rows)
+    }).catch((e: unknown) => {
+      if (!disposed) setBanner({ text: `Falha ao iniciar o terminal: ${e instanceof Error ? e.message : String(e)}`, kind: 'error' })
     })
 
     const ro = new ResizeObserver(() => {

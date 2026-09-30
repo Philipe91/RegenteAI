@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { delimiter, join } from 'node:path'
 import { findExecutable } from '../../src/main/agents/findExecutable'
 import { toSpawnable } from '../../src/main/agents/spawnable'
-import { adapters, availableAgents } from '../../src/main/agents/adapters'
+import { adapters, availableAgents, claudeHasSession } from '../../src/main/agents/adapters'
 import type { AgentAdapter } from '../../src/main/agents/types'
 
 describe('findExecutable', () => {
@@ -61,5 +61,21 @@ describe('adaptadores', () => {
       { id: 'shell', label: 'PowerShell', available: true },
       { id: 'custom', label: 'Comando livre', available: true }
     ])
+  })
+})
+
+describe('claude.hasSession (I-5c)', () => {
+  test('acha a sessão em qualquer subpasta de projects; id estranho → false', async () => {
+    const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs')
+    const { tmpdir } = await import('node:os')
+    const cfg = mkdtempSync(join(tmpdir(), 'claude cfg '))
+    try {
+      mkdirSync(join(cfg, 'projects', 'C--projetos-X'), { recursive: true })
+      writeFileSync(join(cfg, 'projects', 'C--projetos-X', '3f1c2b9a-1111-4000-8000-000000000000.jsonl'), '{}')
+      expect(claudeHasSession('3f1c2b9a-1111-4000-8000-000000000000', cfg)).toBe(true)
+      expect(claudeHasSession('3f1c2b9a-2222-4000-8000-000000000000', cfg)).toBe(false)
+      expect(claudeHasSession('..\\..\\x', cfg)).toBe(false)
+      expect(claudeHasSession('3f1c2b9a-1111-4000-8000-000000000000', join(cfg, 'nao-existe'))).toBe(false)
+    } finally { rmSync(cfg, { recursive: true, force: true }) }
   })
 })

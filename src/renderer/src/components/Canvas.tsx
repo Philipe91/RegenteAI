@@ -18,7 +18,7 @@ function toFlow(n: TerminalNodeData, project: Project, selected = false): Termin
 
 function CanvasInner({ project }: { project: Project }) {
   const addTerminal = useWorkspace((s) => s.addTerminal)
-  const updateGeometry = useWorkspace((s) => s.updateGeometry)
+  const moveNodes = useWorkspace((s) => s.moveNodes)
   const setViewport = useWorkspace((s) => s.setViewport)
   const [nodes, setNodes, onNodesChange] = useNodesState<TerminalFlowNode>(project.nodes.map((n) => toFlow(n, project)))
   const [modalAt, setModalAt] = useState<XYPosition | null>(null)
@@ -55,7 +55,9 @@ function CanvasInner({ project }: { project: Project }) {
         edges={[]}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
-        onNodeDragStop={(_e, n) => updateGeometry(project.id, n.id, { x: n.position.x, y: n.position.y })}
+        onNodeDragStop={(_e, _n, dragged) => moveNodes(project.id, dragged.map((d) => ({ id: d.id, x: d.position.x, y: d.position.y })))}
+        onSelectionDragStop={(_e, dragged) => moveNodes(project.id, dragged.map((d) => ({ id: d.id, x: d.position.x, y: d.position.y })))}
+        disableKeyboardA11y
         defaultViewport={project.viewport}
         onMoveEnd={(_e, vp) => setViewport(project.id, vp)}
         minZoom={0.1}

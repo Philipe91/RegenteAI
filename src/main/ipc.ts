@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain } from 'electron'
+import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { IPC } from '@shared/ipc'
 import { newProject, type AppState, type Project, type StartTerminalRequest } from '@shared/types'
@@ -6,6 +6,7 @@ import type { ProjectStore } from './store/projectStore'
 import type { TerminalService } from './terminals/terminalService'
 import type { PtyManager } from './pty/ptyManager'
 import { availableAgents } from './agents/adapters'
+import { isExternalUrl } from './security'
 
 export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: TerminalService, pty: PtyManager): void {
   const send = (channel: string, ...args: unknown[]) => { if (!win.isDestroyed()) win.webContents.send(channel, ...args) }
@@ -26,6 +27,7 @@ export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: 
   ipcMain.handle(IPC.appLoad, () => store.loadApp())
   ipcMain.handle(IPC.appSave, (_e, s: AppState) => store.saveApp(s))
   ipcMain.handle(IPC.agentsAvailable, () => availableAgents())
+  ipcMain.on(IPC.openExternal, (_e, url: string) => { if (isExternalUrl(url)) void shell.openExternal(url) })
 
   ipcMain.handle(IPC.termStart, (_e, req: StartTerminalRequest) => terminals.start(req))
   ipcMain.handle(IPC.termRestart, (_e, id: string) => terminals.restart(id))

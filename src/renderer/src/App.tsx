@@ -3,6 +3,7 @@ import { useWorkspace } from './state/workspace'
 import { TabBar } from './components/TabBar'
 import { Canvas } from './components/Canvas'
 import { Toasts } from './components/Toasts'
+import { ProjectErrorBoundary } from './components/ProjectErrorBoundary'
 
 export function App() {
   const ready = useWorkspace((s) => s.ready)
@@ -11,6 +12,7 @@ export function App() {
   const projects = useWorkspace((s) => s.projects)
   const createProject = useWorkspace((s) => s.createProject)
   const flushSaves = useWorkspace((s) => s.flushSaves)
+  const closeProject = useWorkspace((s) => s.closeProject)
 
   useEffect(() => { void init() }, [init])
   useEffect(() => {
@@ -26,7 +28,9 @@ export function App() {
     <div className="app">
       <TabBar />
       {active ? (
-        <Canvas key={active.id} project={active} />
+        <ProjectErrorBoundary key={active.id} projectName={active.name} onClose={() => closeProject(active.id)}>
+          <Canvas project={active} />
+        </ProjectErrorBoundary>
       ) : (
         <div className="empty">
           <div>

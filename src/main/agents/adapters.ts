@@ -1,6 +1,19 @@
+import { existsSync, readdirSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import type { AgentId, AgentInfo } from '@shared/types'
 import { findExecutable } from './findExecutable'
 import type { AgentAdapter } from './types'
+
+const SESSION_ID_RE = /^[A-Za-z0-9-]+$/
+
+/** O Claude guarda cada conversa em <config>/projects/<pasta codificada>/<id>.jsonl. */
+export function claudeHasSession(sessionId: string, configDir: string = process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude')): boolean {
+  if (!SESSION_ID_RE.test(sessionId)) return false
+  const projects = join(configDir, 'projects')
+  if (!existsSync(projects)) return false
+  return readdirSync(projects).some((dir) => existsSync(join(projects, dir, sessionId + '.jsonl')))
+}
 
 const powershell = (): string => findExecutable('powershell') ?? 'powershell.exe'
 
@@ -10,7 +23,8 @@ const claude: AgentAdapter = {
   createsSessionId: true,
   detect: () => findExecutable('claude'),
   launch: (exe, sessionId) => ({ file: exe, args: sessionId ? ['--session-id', sessionId] : [] }),
-  resume: (exe, sessionId) => ({ file: exe, args: ['--resume', sessionId] })
+  resume: (exe, sessionId) => ({ file: exe, args: ['--resume', sessionId] }),
+  hasSession: (sessionId) => claudeHasSession(sessionId)
 }
 
 const shell: AgentAdapter = {

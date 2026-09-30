@@ -56,3 +56,14 @@ export function findFreeSpot(nodes: TerminalNodeData[], pos: { x: number; y: num
   }
   return spot
 }
+
+export type GeometryUpdate = { id: string } & Partial<Pick<TerminalNodeData, 'x' | 'y' | 'width' | 'height'>>
+
+/** Salva de uma vez a geometria de vários nós (ex.: arrastar uma seleção). */
+export function updateGeometries(p: Project, updates: GeometryUpdate[], now: string): Project {
+  return updates.reduce((acc, { id, ...geo }) => updateGeometry(acc, id, geo, now), p)
+}
+
+export function projectIdForNode(projects: Record<string, Project>, nodeId: string): string | null {
+  return Object.values(projects).find((p) => p.nodes.some((n) => n.id === nodeId))?.id ?? null
+}

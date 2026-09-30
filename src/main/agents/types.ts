@@ -12,4 +12,6 @@ export interface AgentAdapter {
   launch(exe: string, sessionId: string | undefined, command?: string): LaunchSpec
   /** null = este agente não sabe retomar sessão */
   resume(exe: string, sessionId: string): LaunchSpec | null
+  /** false = a sessão com certeza não existe mais (pula o resume). Ausente = não dá pra saber. */
+  hasSession?(sessionId: string): boolean
 }

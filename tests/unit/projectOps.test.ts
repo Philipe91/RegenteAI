@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { newProject } from '@shared/types'
-import { addTerminal, DEFAULT_TERMINAL_SIZE, findFreeSpot, removeNode, setSessionId, setViewport, updateGeometry } from '../../src/renderer/src/state/projectOps'
+import { addTerminal, DEFAULT_TERMINAL_SIZE, findFreeSpot, projectIdForNode, removeNode, updateGeometries, setSessionId, setViewport, updateGeometry } from '../../src/renderer/src/state/projectOps'
 
 const T0 = '2026-09-30T12:00:00.000Z'
 const T1 = '2026-09-30T12:05:00.000Z'
@@ -52,5 +52,23 @@ describe('findFreeSpot', () => {
   test('considera ocupado quem está a menos de 16px', () => {
     const p = addTerminal(base(), { agent: 'shell', name: 'A', color: '#fff', x: 110, y: 95 }, 'a', T1)
     expect(findFreeSpot(p.nodes, { x: 100, y: 100 })).toEqual({ x: 132, y: 132 })
+  })
+})
+
+describe('updateGeometries (I-1)', () => {
+  test('salva a posição de todos os nós arrastados juntos', () => {
+    let p = addTerminal(base(), { agent: 'shell', name: 'A', color: '#fff', x: 0, y: 0 }, 'a', T1)
+    p = addTerminal(p, { agent: 'shell', name: 'B', color: '#fff', x: 0, y: 0 }, 'b', T1)
+    p = updateGeometries(p, [{ id: 'a', x: 10, y: 20 }, { id: 'b', x: 30, y: 40 }], T1)
+    expect(p.nodes.map((n) => [n.x, n.y])).toEqual([[10, 20], [30, 40]])
+  })
+})
+
+describe('projectIdForNode (I-5a)', () => {
+  test('acha o projeto dono do terminal, mesmo fora da aba ativa', () => {
+    const a = addTerminal(newProject('pa', 'C:/a', T0, 0), { agent: 'claude', name: 'C', color: '#fff', x: 0, y: 0 }, 'n-a', T1)
+    const b = addTerminal(newProject('pb', 'C:/b', T0, 1), { agent: 'claude', name: 'C', color: '#fff', x: 0, y: 0 }, 'n-b', T1)
+    expect(projectIdForNode({ pa: a, pb: b }, 'n-b')).toBe('pb')
+    expect(projectIdForNode({ pa: a, pb: b }, 'nenhum')).toBeNull()
   })
 })

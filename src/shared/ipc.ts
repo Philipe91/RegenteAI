@@ -17,10 +17,13 @@ export const IPC = {
   termData: 'term:data',
   termExit: 'term:exit',
   termNotice: 'term:notice',
-  termSession: 'term:session'
+  termSession: 'term:session',
+  openExternal: 'shell:open-external'
 } as const
 
 export interface RegenteApi {
+  /** Abre http(s)/mailto no navegador do sistema; qualquer outra coisa é ignorada. */
+  openExternal(url: string): void
   projects: {
     list(): Promise<ProjectSummary[]>
     load(id: string): Promise<LoadResult>

@@ -44,3 +44,21 @@ test('cria projeto e terminal, roda comando e restaura depois de reabrir', async
   await expect(win.getByTestId('terminal-node').locator('.xterm-rows')).toContainText('PS', { timeout: 20_000 })
   await app.close()
 })
+
+test('I-4: segunda instância não abre; a primeira continua sozinha', async () => {
+  const { spawn } = await import('node:child_process')
+  const { createRequire } = await import('node:module')
+  const electronPath = createRequire(join(process.cwd(), 'package.json'))('electron') as unknown as string
+  const app = await launch()
+  await app.firstWindow()
+  const env: NodeJS.ProcessEnv = { ...process.env, REGENTE_DATA_DIR: dataDir, REGENTE_E2E_PICK_DIR: projDir }
+  delete env.ELECTRON_RUN_AS_NODE
+  const second = spawn(electronPath, ['.'], { env, stdio: 'ignore' })
+  const exited = await new Promise<boolean>((resolve) => {
+    const t = setTimeout(() => { second.kill(); resolve(false) }, 15_000)
+    second.on('exit', () => { clearTimeout(t); resolve(true) })
+  })
+  expect(exited).toBe(true)
+  expect(app.windows()).toHaveLength(1)
+  await app.close()
+})
