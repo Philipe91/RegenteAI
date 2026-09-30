@@ -70,14 +70,35 @@ Regras:
 - Terminais são nós arrastáveis e redimensionáveis. O terminal se ajusta (fit) ao tamanho do nó.
 - Clicar no terminal dá foco ao teclado. Esc devolve o foco ao canvas.
 
-### 4.3 Presets de terminal
-- **Claude Code**, **PowerShell** e **Comando livre**. O Codex entra quando estiver instalado.
-- Cada preset define: comando, argumentos, ícone e cor padrão. Os presets ficam num arquivo de configuração editável.
+### 4.3 Agentes: multi-IA desde o início (adaptadores)
+O Regente **não é preso a nenhuma IA**. Tudo que é específico de um agente fica num **adaptador** (`main/agents/<nome>.ts`) que implementa a mesma interface:
 
-### 4.4 Sessões do Claude que sobrevivem ao fechar o app
-- Ao criar um terminal Claude, o app gera um UUID e abre com `claude --session-id <uuid>`. O UUID é salvo no nó.
-- Ao reabrir o projeto, o nó volta com `claude --resume <uuid>`, na mesma conversa.
-- Se a sessão não existir mais (apagada), o terminal abre um Claude novo com um UUID novo e mostra um aviso discreto no nó.
+| Capacidade | O que o adaptador responde |
+|---|---|
+| `detect()` | O CLI está instalado neste PC? (aparece no menu só se estiver) |
+| `launch(ctx)` | Comando e argumentos para iniciar uma sessão nova |
+| `resume(ctx, sessionId)` | Como voltar para a mesma sessão (ou `null` se não suportar) |
+| `sessionId` | Se o app escolhe o ID na criação ou se descobre depois (via hook `SessionStart`/payload) |
+| `injectHooks(ctx)` | Como ligar os avisos de "comecei"/"terminei" **só para aquele terminal**, sem tocar na configuração global do usuário |
+| `injectInstructions(ctx, texto)` | Como passar "quem você é e quem são seus colegas" (flag de system prompt, arquivo de instruções ou primeira mensagem) |
+| `readFinalReply(payload)` | Como extrair a resposta final do payload do hook |
+
+Adaptadores na entrega:
+- **Claude Code**: hooks `UserPromptSubmit`/`Stop` via `--settings`; `--session-id`/`--resume`; `--append-system-prompt`.
+- **Codex CLI**: hooks `Stop` (e `notify` em `agent-turn-complete`); `codex resume <id>`; instruções via `AGENTS.md`/overrides de config.
+- **Gemini CLI**: hook `AfterAgent`; `gemini --resume <id>`; instruções via `GEMINI.md`/settings.
+- **Shell genérico** (PowerShell, cmd, qualquer comando): sem hooks; usa o plano B por ociosidade.
+
+Um agente sem adaptador próprio pode ser adicionado como "Comando livre" e funciona com o plano B. Adicionar uma IA nova = escrever um arquivo de adaptador, sem mexer no resto do app.
+
+A forma exata de injetar hooks e instruções **por terminal** no Codex e no Gemini é validada na tarefa de cada adaptador (testando no PC), porque a documentação desses CLIs muda rápido. Se a injeção isolada não for possível num CLI, o adaptador cai no plano B e **nunca** altera a configuração global do usuário.
+
+**Ordem de entrega:** Claude e Shell na fase 1 (são os que estão instalados neste PC); Codex e Gemini na fase 2, junto com as conexões. O Philipe instala esses CLIs quando chegar a hora.
+
+### 4.4 Sessões que sobrevivem ao fechar o app
+- Ao criar um terminal de agente, o adaptador define o ID da sessão (Claude: o app gera um UUID e passa `--session-id`; outros: o ID é capturado do payload do primeiro hook). O ID é salvo no nó.
+- Ao reabrir o projeto, o nó volta com o `resume` do adaptador, na mesma conversa.
+- Se a sessão não existir mais, ou o agente não suportar retomada, o terminal abre uma sessão nova e mostra um aviso discreto no nó.
 
 ### 4.5 Persistência
 - `%APPDATA%\Regente\app.json`: abas abertas, aba ativa e preferências.
@@ -95,7 +116,7 @@ Regras:
 Todo terminal aberto pelo Regente recebe:
 - `REGENTE_URL` (porta do Bridge), `REGENTE_TOKEN` (segredo por terminal) e `REGENTE_TERMINAL_ID`.
 - A pasta do CLI `regente` no início do `PATH` (com `regente.cmd` para PowerShell e cmd).
-- Terminais Claude, além disso, recebem:
+- Terminais de agente, além disso, recebem do seu adaptador (ver 4.3) os hooks de "comecei"/"terminei" e as instruções. Exemplo do Claude:
   - `--settings <arquivo por terminal>` com os hooks `UserPromptSubmit` (→ trabalhando) e `Stop` (→ terminou), que chamam `regente hook <evento>`. **Nenhuma configuração global do usuário é alterada.** Todo caminho usado em hooks e no `PATH` vai **entre aspas** e é testado a partir de uma pasta com espaço (o perfil `C:\Users\Pc Fechamento` já quebrou hooks de plugins antes).
   - `--append-system-prompt` com: quem ele é (nome/papel), quem está conectado e como usar `regente ask` / `regente peers`.
 
@@ -109,7 +130,7 @@ Todo terminal aberto pelo Regente recebe:
 2. Se o destino estiver trabalhando, a mensagem entra numa fila por destino (ordem de chegada).
 3. Entrega: o texto é escrito no PTY do destino usando bracketed paste, seguido de Enter, com cabeçalho `[Mensagem de <origem> via Regente]`.
 4. Fim da resposta:
-   - **Destino Claude:** o hook `Stop` avisa. A resposta é a última mensagem do assistente, lida do `transcript_path` que o hook informa.
+   - **Destino com hook (Claude, Codex, Gemini):** o hook de fim de turno avisa (`Stop` / `AfterAgent`). A resposta é extraída pelo `readFinalReply` do adaptador (no Claude, a última mensagem do assistente no `transcript_path`).
    - **Outros destinos:** plano B por ociosidade (sem saída por N segundos, padrão 4 s); a resposta é a saída capturada desde a entrega, limpa de códigos ANSI.
 5. O Bridge devolve a resposta ao `ask` que estava esperando.
 
@@ -133,6 +154,8 @@ Todo terminal aberto pelo Regente recebe:
 - **Integração:** Bridge + CLI reais conversando por HTTP, com um PTY falso.
 - **Fumaça (Playwright + Electron):** abre o app, cria um projeto, cria um terminal PowerShell, digita `echo ok` e vê `ok`.
 - **Validação manual por fase:** roteiro curto no README (ex.: "Líder pede revisão ao Revisor e recebe resposta").
+- **Windows 10 e 11 são obrigatórios.** Só usar APIs disponíveis nos dois (ConPTY existe desde o Win10 1809). Cada fase é validada no PC do trabalho (Win10, build 19045) e no PC de casa antes de ser dada como pronta.
+- Adaptadores são testados com payloads de hook gravados de verdade (fixtures), para detectar quando um CLI muda o formato.
 - Lint + typecheck no `npm test`. Cada tarefa do plano termina com os testes verdes e um commit.
 
 ## 8. Repositório e instalação no outro PC
