@@ -5,18 +5,25 @@ import type { AgentContext } from '../agents/types'
 import type { TerminalIntegration } from '../terminals/terminalService'
 import type { Bridge } from './bridge'
 import { writeShims } from './shims'
+import { ROLES, type RoleId } from '@shared/roles'
 
 const toPosix = (p: string) => p.replace(/\\/g, '/')
 
-export function systemPromptFor(name: string): string {
-  return [
-    `Você está rodando dentro do Regente, um canvas onde vários agentes de IA trabalham juntos. Seu nome aqui é "${name}".`,
-    'Comandos disponíveis no seu terminal (rode pela sua ferramenta de shell):',
-    '- `regente peers`: lista os agentes e navegadores ligados a você.',
-    '- `regente ask <nome> "<mensagem>"`: pede algo a um agente ligado e ESPERA a resposta, que pode levar minutos. Use o maior timeout que a sua ferramenta de shell permitir (ex.: 600000 ms).',
-    '- `regente browser <ação>`: controla o navegador ligado a você (open, goto, snapshot, click, type, press, screenshot, eval, console, tabs). `regente help` mostra tudo.',
-    'Quando chegar uma mensagem que começa com "[Mensagem de <nome> via Regente]", responda normalmente: a sua resposta final volta sozinha para quem pediu.'
-  ].join('\n')
+/** Uma linha só e sem " % < > : o texto passa pela linha de comando (e pelo cmd.exe quando o claude é .cmd). */
+export function systemPromptFor(name: string, role?: RoleId): string {
+  const safe = (t: string) => t.replace(/[\r\n"%<>]/g, ' ').replace(/\s+/g, ' ').trim()
+  const parts = [
+    `Você está rodando dentro do Regente, um canvas onde vários agentes de IA trabalham juntos. Seu nome aqui é ${safe(name)}.`,
+    role ? `Seu papel: ${ROLES[role].prompt}` : '',
+    'Comandos no seu terminal (rode pela sua ferramenta de shell):',
+    'regente peers lista quem está ligado a você;',
+    'regente ask NOME MENSAGEM pede algo a um agente ligado e ESPERA a resposta, que pode levar minutos, então use o maior timeout que sua ferramenta de shell permitir (ex.: 600000 ms);',
+    'regente browser AÇÃO controla o navegador ligado a você (open, goto, snapshot, click, type, press, screenshot, eval, console, tabs);',
+    'regente note lê a nota ligada a você e regente note append TEXTO acrescenta nela;',
+    'regente help mostra tudo.',
+    'Quando chegar uma mensagem que começa com [Mensagem de NOME via Regente], responda normalmente: sua resposta final volta sozinha para quem pediu.'
+  ]
+  return safe(parts.filter(Boolean).join(' '))
 }
 
 /** Liga cada terminal ao Regente: token, atalhos do `regente`, hooks do Claude e instruções. */
@@ -51,8 +58,9 @@ export class RegenteIntegration implements TerminalIntegration {
   agentContext(req: StartTerminalRequest): AgentContext {
     const hook = (event: string) => ({ hooks: [{ type: 'command', command: `"$REGENTE_BIN/regente" hook ${event}` }] })
     const settingsPath = join(this.hooksDir, `${req.node.id}.json`)
-    writeFileSync(settingsPath, JSON.stringify({ hooks: { UserPromptSubmit: [hook('prompt')], Stop: [hook('stop')] } }, null, 2), 'utf8')
-    return { settingsPath, systemPrompt: systemPromptFor(req.node.name) }
+    const hooks = { SessionStart: [hook('session')], UserPromptSubmit: [hook('prompt')], Stop: [hook('stop')] }
+    writeFileSync(settingsPath, JSON.stringify({ hooks }, null, 2), 'utf8')
+    return { settingsPath, systemPrompt: systemPromptFor(req.node.name, req.node.role) }
   }
 
   onKill(terminalId: string): void {

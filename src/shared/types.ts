@@ -1,3 +1,5 @@
+import type { RoleId } from './roles'
+
 export const PROJECT_VERSION = 1
 export const APP_VERSION = 1
 
@@ -15,6 +17,7 @@ export interface TerminalNodeData {
   height: number
   sessionId?: string
   command?: string
+  role?: RoleId
 }
 
 /** Nó que representa o navegador real do usuário, controlado pelos agentes ligados a ele. */

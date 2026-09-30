@@ -74,6 +74,24 @@ describe('navegador real (Chrome/Edge headless)', () => {
     await manager.close('b3')
   }, 60_000)
 
+  test('Chrome que sobrou de uma execução anterior não impede reabrir o mesmo nó', async () => {
+    await runBrowserCommand(manager, 'b4', 'open', [url])
+    // Simula o app ter fechado sem fechar o navegador: outro gerenciador, mesma pasta de perfis.
+    const other = new BrowserManager({ profilesDir: profiles, resolveBrowser: () => chooseBrowser('auto', detectBrowsers(), readDefaultProgId()), headless: true })
+    try {
+      expect(await runBrowserCommand(other, 'b4', 'open', [url])).toMatch(/Página de Teste/)
+    } finally {
+      await other.closeAll()
+    }
+  }, 90_000)
+
+  test('comandos no mesmo navegador rodam um de cada vez, na ordem', async () => {
+    const order: string[] = []
+    const slow = (tag: string, ms: number) => manager.serialize('b5', async () => { order.push(`início ${tag}`); await new Promise((r) => setTimeout(r, ms)); order.push(`fim ${tag}`) })
+    await Promise.all([slow('A', 80), slow('B', 10)])
+    expect(order).toEqual(['início A', 'fim A', 'início B', 'fim B'])
+  })
+
   test('comando sem navegador aberto explica o que fazer', async () => {
     await expect(runBrowserCommand(manager, 'b2', 'snapshot', [])).rejects.toThrow(/regente browser open/)
   })

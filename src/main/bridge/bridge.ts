@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { randomBytes } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
 
-export interface BridgeContext { terminalId: string }
+export interface BridgeContext { terminalId: string; /** Dispara se quem chamou desistir (conexão fechada). */ signal: AbortSignal }
 export type BridgeHandler = (ctx: BridgeContext, body: any) => unknown | Promise<unknown>
 
 /**
@@ -78,6 +78,8 @@ export class Bridge {
     let body: unknown = {}
     try { body = raw ? JSON.parse(raw) : {} } catch { return send(400, { ok: false, error: 'JSON inválido' }) }
 
+    const ctrl = new AbortController()
+    res.on('close', () => { if (!res.writableFinished) ctrl.abort() })
     let status = 200
     let payload: unknown
     const beat = setInterval(() => {
@@ -85,7 +87,7 @@ export class Bridge {
       res.write(' ')
     }, this.heartbeatMs)
     try {
-      payload = { ok: true, result: await handler({ terminalId }, body) }
+      payload = { ok: true, result: await handler({ terminalId, signal: ctrl.signal }, body) }
     } catch (e) {
       status = 400
       payload = { ok: false, error: e instanceof Error ? e.message : String(e) }

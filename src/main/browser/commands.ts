@@ -61,7 +61,11 @@ async function settle(page: Page): Promise<void> {
   try { await page.waitForLoadState('domcontentloaded', { timeout: 5000 }) } catch { /* segue */ }
 }
 
-export async function runBrowserCommand(manager: BrowserManager, nodeId: string, action: string, args: string[]): Promise<string> {
+export function runBrowserCommand(manager: BrowserManager, nodeId: string, action: string, args: string[]): Promise<string> {
+  return manager.serialize(nodeId, () => execute(manager, nodeId, action, args))
+}
+
+async function execute(manager: BrowserManager, nodeId: string, action: string, args: string[]): Promise<string> {
   const pageOf = () => manager.page(nodeId)
   let result: string
   switch (action) {

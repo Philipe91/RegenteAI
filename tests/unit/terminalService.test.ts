@@ -228,3 +228,14 @@ describe('TerminalService — evento gone (para o AskBroker)', () => {
     expect(gone).toEqual(['t1', 't2'])
   })
 })
+
+describe('TerminalService — evento spawned (para o AskBroker esperar o SessionStart)', () => {
+  test('cada processo aberto avisa spawned, inclusive no restart', () => {
+    const { svc } = setup()
+    const spawned: string[] = []
+    svc.on('spawned', (id) => spawned.push(id))
+    svc.start(req(node()))
+    svc.restart('t1')
+    expect(spawned).toEqual(['t1', 't1'])
+  })
+})

@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
-import { spawn, type ChildProcess } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { basename, join } from 'node:path'
 import { chromium, type Browser, type Page } from 'playwright-core'
 import type { BrowserInfo } from './detect'
 
@@ -28,6 +28,22 @@ export interface BrowserManagerOptions {
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+const alive = (pid: number) => { try { process.kill(pid, 0); return true } catch { return false } }
+
+/** Fecha um navegador que sobrou de uma execução anterior neste perfil (só se o PID ainda for dele). */
+async function killStale(pidFile: string, exe: string): Promise<void> {
+  if (!existsSync(pidFile)) return
+  const pid = Number(readFileSync(pidFile, 'utf8').trim())
+  rmSync(pidFile, { force: true })
+  if (!Number.isInteger(pid) || pid <= 0 || !alive(pid)) return
+  try {
+    const row = execFileSync('tasklist', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'], { encoding: 'utf8', windowsHide: true })
+    if (!row.toLowerCase().includes(basename(exe).toLowerCase())) return
+    execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' })
+  } catch { return }
+  for (let i = 0; i < 30 && alive(pid); i++) await wait(100)
+}
+
 /**
  * Abre o navegador real do usuário (Chrome/Edge/Brave) com depuração remota, num perfil
  * separado por nó, e o controla via CDP. O usuário pode usar a mesma janela ao mesmo tempo.
@@ -35,9 +51,20 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 export class BrowserManager extends EventEmitter {
   private sessions = new Map<string, Session>()
   private opening = new Map<string, Promise<Session>>()
+  private closing = new Map<string, Promise<void>>()
+  private queues = new Map<string, Promise<unknown>>()
 
   constructor(private readonly opts: BrowserManagerOptions) {
     super()
+  }
+
+  /** Um comando por navegador de cada vez (dois agentes não se atropelam nem trocam a numeração do snapshot). */
+  serialize<T>(nodeId: string, fn: () => Promise<T>): Promise<T> {
+    const prev = this.queues.get(nodeId) ?? Promise.resolve()
+    const next = prev.catch(() => undefined).then(fn)
+    this.queues.set(nodeId, next)
+    void next.finally(() => { if (this.queues.get(nodeId) === next) this.queues.delete(nodeId) }).catch(() => undefined)
+    return next
   }
 
   isOpen(nodeId: string): boolean {
@@ -58,6 +85,7 @@ export class BrowserManager extends EventEmitter {
     if (existing) return existing
     const pending = this.opening.get(nodeId)
     if (pending) return pending
+    await this.closing.get(nodeId)
     const p = this.launch(nodeId).finally(() => this.opening.delete(nodeId))
     this.opening.set(nodeId, p)
     return p
@@ -92,8 +120,14 @@ export class BrowserManager extends EventEmitter {
 
   async close(nodeId: string): Promise<void> {
     const s = this.sessions.get(nodeId)
-    if (!s) return
+    if (!s) return this.closing.get(nodeId)
     this.sessions.delete(nodeId)
+    const done = this.finishClose(nodeId, s)
+    this.closing.set(nodeId, done)
+    await done.finally(() => this.closing.delete(nodeId))
+  }
+
+  private async finishClose(nodeId: string, s: Session): Promise<void> {
     if (s.previewTimer) clearTimeout(s.previewTimer)
     try { await s.browser.close() } catch { /* conexão já caiu */ }
     // Espera o processo sair de verdade (libera o perfil para reabrir/apagar).
@@ -141,6 +175,8 @@ export class BrowserManager extends EventEmitter {
     const profile = join(this.opts.profilesDir, nodeId)
     mkdirSync(profile, { recursive: true })
     const portFile = join(profile, 'DevToolsActivePort')
+    const pidFile = join(profile, 'regente.pid')
+    await killStale(pidFile, info.path)
     rmSync(portFile, { force: true })
     const args = [
       '--remote-debugging-port=0',
@@ -151,6 +187,7 @@ export class BrowserManager extends EventEmitter {
       'about:blank'
     ]
     const proc = spawn(info.path, args, { stdio: 'ignore', windowsHide: false })
+    if (proc.pid) writeFileSync(pidFile, String(proc.pid))
 
     let port = 0
     for (let i = 0; i < 150 && !port; i++) {
@@ -164,7 +201,14 @@ export class BrowserManager extends EventEmitter {
       throw new Error(`Não consegui abrir o ${info.label} com controle remoto. Se ele pedir algo na tela, responda e tente de novo.`)
     }
 
-    const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`)
+    let browser: Browser
+    try {
+      browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`)
+    } catch (e) {
+      if (proc.exitCode === null) proc.kill()
+      this.emit('state', nodeId, { status: 'closed', browser: info.label } satisfies BrowserState)
+      throw new Error(`Abri o ${info.label}, mas não consegui controlá-lo: ${e instanceof Error ? e.message : String(e)}`)
+    }
     const session: Session = { info, proc, port, browser, current: null, console: [], lastPreview: 0 }
     this.sessions.set(nodeId, session)
 

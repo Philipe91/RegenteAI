@@ -47,3 +47,22 @@ describe('Bridge', () => {
     expect((await call(url, '/lento', tok, {})).json).toEqual({ ok: true, result: 'fim' })
   })
 })
+
+describe('Bridge — desistência do cliente', () => {
+  test('conexão cai → o handler recebe o sinal de cancelamento', async () => {
+    bridge = new Bridge({ heartbeatMs: 20 })
+    let aborted = false
+    bridge.route('/espera', (ctx) => new Promise((r) => {
+      ctx.signal.addEventListener('abort', () => { aborted = true; r('x') })
+    }))
+    const url = await bridge.listen()
+    const tok = bridge.issueToken('t1')
+    const ctrl = new AbortController()
+    const req = fetch(url + '/espera', { method: 'POST', headers: { authorization: `Bearer ${tok}` }, body: '{}', signal: ctrl.signal }).catch(() => null)
+    await new Promise((r) => setTimeout(r, 100))
+    ctrl.abort()
+    await req
+    await new Promise((r) => setTimeout(r, 100))
+    expect(aborted).toBe(true)
+  })
+})

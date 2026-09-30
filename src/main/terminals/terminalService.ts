@@ -102,6 +102,7 @@ export class TerminalService extends EventEmitter {
       if (extra.length > 0 && Array.isArray(spec.args)) full = { ...spec, args: [...spec.args, ...extra] }
     }
     this.pty.start(req.node.id, toSpawnable(full), { cwd: req.cwd, cols: req.cols, rows: req.rows, env })
+    this.emit('spawned', req.node.id)
   }
 
   private onExit(id: string, code: number, lived: number): void {

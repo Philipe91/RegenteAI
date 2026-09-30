@@ -47,6 +47,7 @@ if (!app.requestSingleInstanceLock()) {
       supportsHooks: (id) => topology.node(id)?.node.agent === 'claude'
     })
     const flow = (from: string, to: string, active: boolean) => { if (win && !win.isDestroyed()) win.webContents.send(IPC.termFlow, from, to, active) }
+    terminals.on('spawned', (id: string) => broker.markStarting(id))
     registerBridgeRoutes(bridge, { topology, pty, broker, browsers, onFlow: flow })
 
     win = new BrowserWindow({
@@ -68,6 +69,17 @@ if (!app.requestSingleInstanceLock()) {
     win.focus()
   })
   app.whenReady().then(start)
-  app.on('before-quit', () => { pty.killAll(); void browsers.closeAll(); void bridge.close() })
+  // Ao sair, espera os navegadores fecharem de verdade (no Windows eles sobreviveriam ao app).
+  let quitting = false
+  app.on('before-quit', (e) => {
+    if (quitting) return
+    e.preventDefault()
+    quitting = true
+    pty.killAll()
+    void Promise.race([browsers.closeAll(), new Promise((r) => setTimeout(r, 4000))]).finally(() => {
+      void bridge.close()
+      app.exit(0)
+    })
+  })
   app.on('window-all-closed', () => app.quit())
 }
