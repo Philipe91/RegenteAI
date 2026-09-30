@@ -52,3 +52,6 @@ export function newProject(id: string, cwd: string, now: string, colorIndex: num
     createdAt: now, updatedAt: now
   }
 }
+
+export interface StartTerminalRequest { projectId: string; cwd: string; node: TerminalNodeData; cols: number; rows: number }
+export interface StartTerminalResult { buffer: string; sessionId?: string; error?: string }
