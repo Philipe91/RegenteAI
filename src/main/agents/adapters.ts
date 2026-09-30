@@ -24,7 +24,8 @@ const claude: AgentAdapter = {
   detect: () => findExecutable('claude'),
   launch: (exe, sessionId) => ({ file: exe, args: sessionId ? ['--session-id', sessionId] : [] }),
   resume: (exe, sessionId) => ({ file: exe, args: ['--resume', sessionId] }),
-  hasSession: (sessionId) => claudeHasSession(sessionId)
+  hasSession: (sessionId) => claudeHasSession(sessionId),
+  integrationArgs: (ctx) => ['--settings', ctx.settingsPath, '--append-system-prompt', ctx.systemPrompt]
 }
 
 const shell: AgentAdapter = {

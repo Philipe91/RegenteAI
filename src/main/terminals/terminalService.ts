@@ -2,10 +2,19 @@ import { EventEmitter } from 'node:events'
 import { existsSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import type { AgentId, StartTerminalRequest, StartTerminalResult } from '@shared/types'
-import type { AgentAdapter, LaunchSpec } from '../agents/types'
+import type { AgentAdapter, AgentContext, LaunchSpec } from '../agents/types'
 import { toSpawnable } from '../agents/spawnable'
 import type { PtyManager } from '../pty/ptyManager'
 import { buildTerminalEnv } from './terminalEnv'
+import { prependPath } from '../bridge/shims'
+
+/** Como o Regente se conecta a cada terminal (token, PATH do `regente`, hooks). Opcional nos testes. */
+export interface TerminalIntegration {
+  env(req: StartTerminalRequest): Record<string, string>
+  pathDir: string
+  agentContext(req: StartTerminalRequest): AgentContext
+  onKill(terminalId: string): void
+}
 
 /** Se um "resume" morre com erro antes disso, consideramos que a sessão não existe mais (rede de segurança). */
 const RESUME_FAIL_WINDOW_MS = 15_000
@@ -21,7 +30,8 @@ export class TerminalService extends EventEmitter {
     private readonly pty: PtyManager,
     private readonly adapters: Record<AgentId, AgentAdapter>,
     private readonly newId: () => string = randomUUID,
-    private readonly baseEnv: NodeJS.ProcessEnv = process.env
+    private readonly baseEnv: NodeJS.ProcessEnv = process.env,
+    private readonly integration?: TerminalIntegration
   ) {
     super()
     pty.on('exit', (id: string, code: number, lived: number) => this.onExit(id, code, lived))
@@ -51,6 +61,7 @@ export class TerminalService extends EventEmitter {
 
   kill(id: string): void {
     this.running.delete(id)
+    this.integration?.onKill(id)
     this.pty.forget(id)
   }
 
@@ -81,10 +92,15 @@ export class TerminalService extends EventEmitter {
   }
 
   private spawn(req: StartTerminalRequest, spec: LaunchSpec): void {
-    this.pty.start(req.node.id, toSpawnable(spec), {
-      cwd: req.cwd, cols: req.cols, rows: req.rows,
-      env: buildTerminalEnv(this.baseEnv, { terminalId: req.node.id, projectId: req.projectId })
-    })
+    const env = buildTerminalEnv(this.baseEnv, { terminalId: req.node.id, projectId: req.projectId })
+    let full = spec
+    if (this.integration) {
+      Object.assign(env, this.integration.env(req))
+      prependPath(env, this.integration.pathDir)
+      const extra = this.adapters[req.node.agent]?.integrationArgs?.(this.integration.agentContext(req)) ?? []
+      if (extra.length > 0 && Array.isArray(spec.args)) full = { ...spec, args: [...spec.args, ...extra] }
+    }
+    this.pty.start(req.node.id, toSpawnable(full), { cwd: req.cwd, cols: req.cols, rows: req.rows, env })
   }
 
   private onExit(id: string, code: number, lived: number): void {

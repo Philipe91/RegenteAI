@@ -28,6 +28,10 @@ interface WorkspaceState {
   flushSaves(): void
 }
 
+/** O motor precisa saber nomes e cordas para o `regente peers/ask/browser`. */
+const syncTopology = (p: Project) =>
+  window.regente.topology.update(p.id, p.nodes.map((n) => ({ id: n.id, name: n.name, agent: n.agent, kind: n.kind })), p.edges)
+
 const saver = createSaver((p) => { void window.regente.projects.save(p) }, 400)
 const now = () => new Date().toISOString()
 let toastSeq = 0
@@ -43,6 +47,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     const next = fn(p)
     set({ projects: { ...get().projects, [projectId]: next } })
     saver.schedule(next)
+    syncTopology(next)
   }
 
   return {
@@ -67,12 +72,14 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       })
       const openIds = appState.openProjectIds.filter((id) => projects[id])
       const activeId = appState.activeProjectId && projects[appState.activeProjectId] ? appState.activeProjectId : openIds[0] ?? null
+      Object.values(projects).forEach(syncTopology)
       set({ ready: true, projects, openIds, activeId, agents })
     },
 
     async createProject() {
       const p = await window.regente.projects.create()
       if (!p) return
+      syncTopology(p)
       set({ projects: { ...get().projects, [p.id]: p }, openIds: [...get().openIds, p.id], activeId: p.id })
       saveApp()
     },
@@ -82,6 +89,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const r = await window.regente.projects.load(id)
       if (r.warning) get().toast(r.warning)
       if (!r.project) return
+      syncTopology(r.project)
       set({ projects: { ...get().projects, [id]: r.project }, openIds: [...get().openIds, id], activeId: id })
       saveApp()
     },
@@ -91,6 +99,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       if (!p) return
       saver.flush()
       p.nodes.forEach((n) => window.regente.term.kill(n.id))
+      window.regente.topology.remove(id)
       const idx = get().openIds.indexOf(id)
       const openIds = get().openIds.filter((x) => x !== id)
       const { [id]: _closed, ...projects } = get().projects

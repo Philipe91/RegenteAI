@@ -1,14 +1,15 @@
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { IPC } from '@shared/ipc'
-import { newProject, type AppState, type Project, type StartTerminalRequest } from '@shared/types'
+import { newProject, type EdgeData, type AppState, type Project, type StartTerminalRequest } from '@shared/types'
 import type { ProjectStore } from './store/projectStore'
 import type { TerminalService } from './terminals/terminalService'
 import type { PtyManager } from './pty/ptyManager'
 import { availableAgents } from './agents/adapters'
 import { isExternalUrl } from './security'
+import type { Topology, TopoNode } from './bridge/topology'
 
-export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: TerminalService, pty: PtyManager): void {
+export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: TerminalService, pty: PtyManager, topology: Topology): void {
   const send = (channel: string, ...args: unknown[]) => { if (!win.isDestroyed()) win.webContents.send(channel, ...args) }
 
   ipcMain.handle(IPC.projectsList, () => store.list())
@@ -27,6 +28,8 @@ export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: 
   ipcMain.handle(IPC.appLoad, () => store.loadApp())
   ipcMain.handle(IPC.appSave, (_e, s: AppState) => store.saveApp(s))
   ipcMain.handle(IPC.agentsAvailable, () => availableAgents())
+  ipcMain.on(IPC.topologyUpdate, (_e, projectId: string, nodes: TopoNode[], edges: EdgeData[]) => topology.update(projectId, nodes, edges))
+  ipcMain.on(IPC.topologyRemove, (_e, projectId: string) => topology.remove(projectId))
   ipcMain.on(IPC.openExternal, (_e, url: string) => { if (isExternalUrl(url)) void shell.openExternal(url) })
 
   ipcMain.handle(IPC.termStart, (_e, req: StartTerminalRequest) => terminals.start(req))

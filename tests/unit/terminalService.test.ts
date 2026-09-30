@@ -172,3 +172,45 @@ describe('TerminalService — correções da revisão', () => {
     expect(events.some((e) => e[0] === 'notice')).toBe(true)
   })
 })
+
+describe('TerminalService — integração com o Regente (Fase 2)', () => {
+  function withIntegration() {
+    const spawned: Array<{ args: string[] | string; env: Record<string, string> }> = []
+    const factory: PtyFactory = (_f, args, opts) => {
+      spawned.push({ args, env: opts.env })
+      return { onData: () => {}, onExit: () => {}, write: () => {}, resize: () => {}, kill: () => {} }
+    }
+    const killed: string[] = []
+    const list: Record<AgentId, AgentAdapter> = {
+      claude: { ...adapters.claude, detect: () => 'C:/bin/claude.exe', hasSession: () => true },
+      shell: { ...adapters.shell, detect: () => 'C:/bin/powershell.exe' },
+      custom: { ...adapters.custom, detect: () => 'C:/bin/powershell.exe' }
+    }
+    const svc = new TerminalService(new PtyManager(factory), list, () => 'uuid-x', { Path: 'C:/win' }, {
+      env: (r) => ({ REGENTE_TOKEN: `tok-${r.node.id}`, REGENTE_URL: 'http://127.0.0.1:9' }),
+      pathDir: 'C:/rg/bin',
+      agentContext: (r) => ({ settingsPath: `C:/rg/hooks/${r.node.id}.json`, systemPrompt: `Você é ${r.node.name}` }),
+      onKill: (id) => killed.push(id)
+    })
+    return { svc, spawned, killed }
+  }
+
+  test('claude recebe --settings e --append-system-prompt depois dos args de sessão', () => {
+    const { svc, spawned } = withIntegration()
+    svc.start(req(node({ name: 'Líder' })))
+    expect(spawned[0].args).toEqual(['--session-id', 'uuid-x', '--settings', 'C:/rg/hooks/t1.json', '--append-system-prompt', 'Você é Líder'])
+  })
+  test('shell não recebe args do Claude, mas recebe env e PATH do regente', () => {
+    const { svc, spawned } = withIntegration()
+    svc.start(req(node({ agent: 'shell' })))
+    expect(spawned[0].args).toEqual(['-NoLogo'])
+    expect(spawned[0].env.REGENTE_TOKEN).toBe('tok-t1')
+    expect(spawned[0].env.Path).toBe('C:/rg/bin;C:/win')
+  })
+  test('kill avisa a integração (revoga o token)', () => {
+    const { svc, killed } = withIntegration()
+    svc.start(req(node({ agent: 'shell' })))
+    svc.kill('t1')
+    expect(killed).toEqual(['t1'])
+  })
+})

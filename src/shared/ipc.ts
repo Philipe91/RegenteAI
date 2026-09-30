@@ -1,4 +1,4 @@
-import type { AgentInfo, AppState, LoadResult, Project, ProjectSummary, StartTerminalRequest, StartTerminalResult } from './types'
+import type { EdgeData, AgentInfo, AppState, LoadResult, Project, ProjectSummary, StartTerminalRequest, StartTerminalResult } from './types'
 
 export const IPC = {
   projectsList: 'projects:list',
@@ -18,12 +18,18 @@ export const IPC = {
   termExit: 'term:exit',
   termNotice: 'term:notice',
   termSession: 'term:session',
-  openExternal: 'shell:open-external'
+  openExternal: 'shell:open-external',
+  topologyUpdate: 'topology:update',
+  topologyRemove: 'topology:remove'
 } as const
 
 export interface RegenteApi {
   /** Abre http(s)/mailto no navegador do sistema; qualquer outra coisa é ignorada. */
   openExternal(url: string): void
+  topology: {
+    update(projectId: string, nodes: Array<{ id: string; name: string; agent: string; kind: 'terminal' | 'browser' }>, edges: EdgeData[]): void
+    remove(projectId: string): void
+  }
   projects: {
     list(): Promise<ProjectSummary[]>
     load(id: string): Promise<LoadResult>
