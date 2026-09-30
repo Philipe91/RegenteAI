@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "e2e": "electron-vite build && playwright test",
-    "postinstall": "node node_modules/electron/install.js"
+    "postinstall": "node node_modules/electron/install.js",
+    "dist": "electron-vite build && electron-builder --win nsis --x64",
+    "dist:dir": "electron-vite build && electron-builder --win dir --x64"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
@@ -31,9 +33,44 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.2.0",
     "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "typescript": "~5.9",
     "vite": "^7.3.6",
     "vitest": "^5.0.3"
-  }
+  },
+  "build": {
+    "appId": "com.regente.app",
+    "productName": "Regente",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/node-pty/**",
+      "out/main/cli.js"
+    ],
+    "npmRebuild": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Regente"
+    }
+  },
+  "author": "Philipe"
 }

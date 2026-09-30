@@ -40,7 +40,7 @@ if (!app.requestSingleInstanceLock()) {
 
   const start = async (): Promise<void> => {
     const url = await bridge.listen()
-    const integration = new RegenteIntegration(bridge, url, dataDir, process.execPath, join(__dirname, 'cli.js'))
+    const integration = new RegenteIntegration(bridge, url, dataDir, process.execPath, join(__dirname, 'cli.js').replace('app.asar', 'app.asar.unpacked'))
     const terminals = new TerminalService(pty, adapters, undefined, process.env, integration)
     const broker = new AskBroker({
       topology,

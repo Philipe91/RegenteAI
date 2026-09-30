@@ -63,3 +63,16 @@ Comandos que os agentes usam (e você também pode usar em qualquer terminal do 
 - Escolha qual navegador em **Navegador ▾** no canto superior direito. "Automático" usa o padrão do Windows (Firefox ainda não é suportado para automação).
 - O nó mostra o endereço, o título e uma prévia da página; dá para digitar um endereço na barra dele.
 - Ações do agente: `open [url]`, `goto <url>`, `back`, `reload`, `snapshot` (texto + elementos numerados), `click <n>`, `type <n> <texto>`, `press <tecla>`, `screenshot`, `eval "<js>"`, `console`, `tabs`, `tab <n>`, `endpoint` (URL CDP para outras ferramentas).
+
+## Papéis, notas e avisos
+- **Papéis:** ao criar um terminal Claude, escolha Líder, Desenvolvedor, Revisor ou Testador. O papel aparece como selo no cabeçalho e vira instrução do agente.
+- **Notas:** **+ Nota** cria um bloco de texto. Ligado por corda a um terminal, o agente usa `regente note` (ler), `regente note append <texto>` e `regente note write <texto>` (`--nota NOME` se houver mais de uma). Ótimo para uma lista de tarefas compartilhada.
+- **Avisos:** com o Regente minimizado ou em segundo plano, quando um agente termina aparece uma notificação do Windows; clicar nela leva direto ao terminal. Desligue em **Avisos** no topo.
+
+## Instalador (.exe)
+```
+npm run dist
+```
+Gera `dist\Regente Setup <versão>.exe`. Ele instala para o seu usuário (sem admin), cria atalho na área de trabalho e permite escolher a pasta. O instalador não é assinado, então o Windows SmartScreen pode avisar: clique em **Mais informações → Executar assim mesmo**.
+
+`npm run dist:dir` gera só a pasta `dist\win-unpacked` (para testar sem instalar).

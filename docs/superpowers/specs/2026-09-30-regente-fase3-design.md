@@ -1,6 +1,6 @@
 # Regente — Fase 3: notificações, papéis, notas e instalador
 
-**Data:** 2026-09-30 · **Status:** em implementação (Philipe: "pode continuar o desenvolvimento"; commit + push a cada avanço)
+**Data:** 2026-09-30 · **Status:** implementado
 
 ## 1. Notificação do Windows
 - Quando um agente com hooks termina a vez (**trabalhando → pronto**) e a janela do Regente **não está em foco**, aparece uma notificação do Windows: título "<nome> terminou", corpo = começo da resposta final (até 140 caracteres).

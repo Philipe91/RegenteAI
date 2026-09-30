@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#141414"/>
+  <rect x="16" y="16" width="480" height="480" rx="100" fill="none" stroke="#2c2c2c" stroke-width="8"/>
+  <!-- batuta -->
+  <line x1="150" y1="370" x2="360" y2="150" stroke="#F25C1F" stroke-width="30" stroke-linecap="round"/>
+  <circle cx="150" cy="370" r="30" fill="#F25C1F"/>
+  <!-- três agentes -->
+  <circle cx="352" cy="330" r="30" fill="#ECE7DF"/>
+  <circle cx="262" cy="410" r="24" fill="#ECE7DF" opacity="0.8"/>
+  <circle cx="410" cy="250" r="22" fill="#ECE7DF" opacity="0.65"/>
+</svg>
