@@ -11,6 +11,8 @@ import { Bridge } from './bridge/bridge'
 import { Topology } from './bridge/topology'
 import { RegenteIntegration } from './bridge/integration'
 import { registerBridgeRoutes } from './bridge/routes'
+import { AskBroker } from './bridge/askBroker'
+import { IPC } from '@shared/ipc'
 
 const dataDir = process.env.REGENTE_DATA_DIR ?? join(app.getPath('appData'), 'Regente')
 // A trava de instância única vale por pasta de dados (testes usam pastas próprias).
@@ -30,7 +32,15 @@ if (!app.requestSingleInstanceLock()) {
     const url = await bridge.listen()
     const integration = new RegenteIntegration(bridge, url, dataDir, process.execPath, join(__dirname, 'cli.js'))
     const terminals = new TerminalService(pty, adapters, undefined, process.env, integration)
-    registerBridgeRoutes(bridge, { topology, terminals, pty })
+    const broker = new AskBroker({
+      topology,
+      isRunning: (id) => pty.isRunning(id),
+      write: (id, data) => pty.write(id, data),
+      onData: (cb) => pty.on('data', cb),
+      onGone: (cb) => terminals.on('gone', cb),
+      supportsHooks: (id) => topology.node(id)?.node.agent === 'claude'
+    })
+    registerBridgeRoutes(bridge, { topology, pty, broker })
 
     win = new BrowserWindow({
       width: 1400, height: 900, backgroundColor: '#101010', title: 'Regente', autoHideMenuBar: true,
@@ -38,6 +48,9 @@ if (!app.requestSingleInstanceLock()) {
     })
     guardWebContents(win.webContents, (u) => void shell.openExternal(u))
     registerIpc(win, store, terminals, pty, topology)
+    const send = (channel: string, ...args: unknown[]) => { if (win && !win.isDestroyed()) win.webContents.send(channel, ...args) }
+    broker.on('status', (id: string, s: string) => send(IPC.termStatus, id, s))
+    broker.on('flow', (from: string, to: string, active: boolean) => send(IPC.termFlow, from, to, active))
     if (process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
     else win.loadFile(join(__dirname, '../renderer/index.html'))
   }

@@ -5,6 +5,9 @@ import { createSaver } from './saver'
 
 export interface Toast { id: number; message: string }
 
+/** Estado ao vivo de cada terminal (não é salvo). */
+export type Activity = 'working' | 'attention'
+
 interface WorkspaceState {
   ready: boolean
   projects: Record<string, Project>
@@ -12,7 +15,12 @@ interface WorkspaceState {
   activeId: string | null
   agents: AgentInfo[]
   toasts: Toast[]
+  activity: Record<string, Activity>
+  flows: Record<string, true>
   init(): Promise<void>
+  connect(projectId: string, source: string, target: string): void
+  disconnect(projectId: string, edgeId: string): void
+  markSeen(nodeId: string): void
   createProject(): Promise<void>
   openProject(id: string): Promise<void>
   closeProject(id: string): void
@@ -51,7 +59,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
   }
 
   return {
-    ready: false, projects: {}, openIds: [], activeId: null, agents: [], toasts: [],
+    ready: false, projects: {}, openIds: [], activeId: null, agents: [], toasts: [], activity: {}, flows: {},
 
     async init() {
       const [appState, agents] = await Promise.all([window.regente.app.load(), window.regente.agents.available()])
@@ -65,6 +73,16 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
           get().toast(`Não foi possível abrir o projeto ${id}: ${e instanceof Error ? e.message : String(e)}`)
         }
       }
+      window.regente.term.onStatus((nodeId, status) => {
+        const { [nodeId]: prev, ...rest } = get().activity
+        if (status === 'working') set({ activity: { ...rest, [nodeId]: 'working' } })
+        else set({ activity: prev === 'working' ? { ...rest, [nodeId]: 'attention' } : rest })
+      })
+      window.regente.term.onFlow((from, to, active) => {
+        const key = [from, to].sort().join('|')
+        const { [key]: _old, ...rest } = get().flows
+        set({ flows: active ? { ...rest, [key]: true } : rest })
+      })
       // A sessão pode mudar com o terminal fora da tela (aba em segundo plano): registra onde ele estiver.
       window.regente.term.onSession((nodeId, sid) => {
         const pid = ops.projectIdForNode(get().projects, nodeId)
@@ -119,6 +137,13 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
 
     updateGeometry(projectId, nodeId, geo) { mutate(projectId, (p) => ops.updateGeometry(p, nodeId, geo, now())) },
     moveNodes(projectId, updates) { mutate(projectId, (p) => ops.updateGeometries(p, updates, now())) },
+    connect(projectId, source, target) { mutate(projectId, (p) => ops.addEdge(p, source, target, crypto.randomUUID(), now())) },
+    disconnect(projectId, edgeId) { mutate(projectId, (p) => ops.removeEdge(p, edgeId, now())) },
+    markSeen(nodeId) {
+      if (get().activity[nodeId] !== 'attention') return
+      const { [nodeId]: _seen, ...rest } = get().activity
+      set({ activity: rest })
+    },
     setViewport(projectId, vp) { mutate(projectId, (p) => ops.setViewport(p, vp, now())) },
     setSessionId(projectId, nodeId, sid) { mutate(projectId, (p) => ops.setSessionId(p, nodeId, sid, now())) },
 

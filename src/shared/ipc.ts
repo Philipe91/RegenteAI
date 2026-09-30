@@ -20,6 +20,8 @@ export const IPC = {
   termSession: 'term:session',
   openExternal: 'shell:open-external',
   topologyUpdate: 'topology:update',
+  termStatus: 'term:status',
+  termFlow: 'term:flow',
   topologyRemove: 'topology:remove'
 } as const
 
@@ -49,5 +51,7 @@ export interface RegenteApi {
     onExit(cb: (id: string, code: number) => void): () => void
     onNotice(cb: (id: string, message: string) => void): () => void
     onSession(cb: (id: string, sessionId: string) => void): () => void
+    onStatus(cb: (id: string, status: 'idle' | 'working') => void): () => void
+    onFlow(cb: (from: string, to: string, active: boolean) => void): () => void
   }
 }

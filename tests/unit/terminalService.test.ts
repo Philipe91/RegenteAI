@@ -214,3 +214,17 @@ describe('TerminalService — integração com o Regente (Fase 2)', () => {
     expect(killed).toEqual(['t1'])
   })
 })
+
+describe('TerminalService — evento gone (para o AskBroker)', () => {
+  test('kill e saída natural emitem gone', () => {
+    const { svc, spawned, advance } = setup()
+    const gone: string[] = []
+    svc.on('gone', (id) => gone.push(id))
+    svc.start(req(node({ agent: 'shell' })))
+    advance(60000)
+    spawned[0].exit(0)
+    svc.start(req(node({ id: 't2', agent: 'shell' })))
+    svc.kill('t2')
+    expect(gone).toEqual(['t1', 't2'])
+  })
+})

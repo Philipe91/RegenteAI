@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { newProject } from '@shared/types'
-import { addTerminal, DEFAULT_TERMINAL_SIZE, findFreeSpot, projectIdForNode, removeNode, updateGeometries, setSessionId, setViewport, updateGeometry } from '../../src/renderer/src/state/projectOps'
+import { addEdge, addTerminal, DEFAULT_TERMINAL_SIZE, findFreeSpot, projectIdForNode, removeEdge, removeNode, updateGeometries, setSessionId, setViewport, updateGeometry } from '../../src/renderer/src/state/projectOps'
 
 const T0 = '2026-09-30T12:00:00.000Z'
 const T1 = '2026-09-30T12:05:00.000Z'
@@ -41,17 +41,22 @@ describe('projectOps', () => {
 })
 
 describe('findFreeSpot', () => {
+  const size = { width: 640, height: 400 }
   test('posição livre fica como está', () => {
-    expect(findFreeSpot([], { x: 100, y: 100 })).toEqual({ x: 100, y: 100 })
+    expect(findFreeSpot([], { x: 100, y: 100 }, size)).toEqual({ x: 100, y: 100 })
   })
-  test('desloca em cascata enquanto houver nó no mesmo ponto', () => {
+  test('nasce ao lado (à direita) de quem ocupa o lugar, sem sobrepor', () => {
+    const p = addTerminal(base(), { agent: 'shell', name: 'A', color: '#fff', x: 100, y: 100 }, 'a', T1)
+    expect(findFreeSpot(p.nodes, { x: 100, y: 100 }, size)).toEqual({ x: 764, y: 100 })
+  })
+  test('pula vários em sequência', () => {
     let p = addTerminal(base(), { agent: 'shell', name: 'A', color: '#fff', x: 100, y: 100 }, 'a', T1)
-    p = addTerminal(p, { agent: 'shell', name: 'B', color: '#fff', x: 132, y: 132 }, 'b', T1)
-    expect(findFreeSpot(p.nodes, { x: 100, y: 100 })).toEqual({ x: 164, y: 164 })
+    p = addTerminal(p, { agent: 'shell', name: 'B', color: '#fff', x: 764, y: 150 }, 'b', T1)
+    expect(findFreeSpot(p.nodes, { x: 100, y: 100 }, size)).toEqual({ x: 1428, y: 100 })
   })
-  test('considera ocupado quem está a menos de 16px', () => {
-    const p = addTerminal(base(), { agent: 'shell', name: 'A', color: '#fff', x: 110, y: 95 }, 'a', T1)
-    expect(findFreeSpot(p.nodes, { x: 100, y: 100 })).toEqual({ x: 132, y: 132 })
+  test('sobreposição parcial também conta', () => {
+    const p = addTerminal(base(), { agent: 'shell', name: 'A', color: '#fff', x: 400, y: 300 }, 'a', T1)
+    expect(findFreeSpot(p.nodes, { x: 100, y: 100 }, size)).toEqual({ x: 1064, y: 100 })
   })
 })
 
@@ -70,5 +75,28 @@ describe('projectIdForNode (I-5a)', () => {
     const b = addTerminal(newProject('pb', 'C:/b', T0, 1), { agent: 'claude', name: 'C', color: '#fff', x: 0, y: 0 }, 'n-b', T1)
     expect(projectIdForNode({ pa: a, pb: b }, 'n-b')).toBe('pb')
     expect(projectIdForNode({ pa: a, pb: b }, 'nenhum')).toBeNull()
+  })
+})
+
+describe('cordas (addEdge/removeEdge)', () => {
+  const two = () => {
+    let p = addTerminal(base(), { agent: 'claude', name: 'A', color: '#fff', x: 0, y: 0 }, 'a', T1)
+    return addTerminal(p, { agent: 'claude', name: 'B', color: '#fff', x: 0, y: 0 }, 'b', T1)
+  }
+  test('liga dois nós', () => {
+    const p = addEdge(two(), 'a', 'b', 'e1', T1)
+    expect(p.edges).toEqual([{ id: 'e1', source: 'a', target: 'b' }])
+  })
+  test('não duplica (nem invertida) e não liga um nó a ele mesmo', () => {
+    let p = addEdge(two(), 'a', 'b', 'e1', T1)
+    p = addEdge(p, 'b', 'a', 'e2', T1)
+    p = addEdge(p, 'a', 'a', 'e3', T1)
+    expect(p.edges.map((e) => e.id)).toEqual(['e1'])
+  })
+  test('ignora nó inexistente e remove por id', () => {
+    let p = addEdge(two(), 'a', 'zzz', 'e1', T1)
+    expect(p.edges).toEqual([])
+    p = removeEdge(addEdge(p, 'a', 'b', 'e2', T1), 'e2', T1)
+    expect(p.edges).toEqual([])
   })
 })

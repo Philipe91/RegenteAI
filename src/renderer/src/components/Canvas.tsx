@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Background, Controls, MiniMap, ReactFlow, ReactFlowProvider, useNodesState, useReactFlow, type XYPosition } from '@xyflow/react'
+import { Background, ConnectionMode, Controls, MiniMap, ReactFlow, ReactFlowProvider, useNodesState, useReactFlow, type XYPosition } from '@xyflow/react'
+import { useMemo } from 'react'
+import { RopeEdge, type RopeFlowEdge } from './RopeEdge'
 import '@xyflow/react/dist/style.css'
 import type { Project, TerminalNodeData } from '@shared/types'
 import { useWorkspace } from '../state/workspace'
@@ -8,6 +10,7 @@ import { TerminalNode, type TerminalFlowNode } from './TerminalNode'
 import { NewTerminalModal } from './NewTerminalModal'
 
 const nodeTypes = { terminal: TerminalNode }
+const edgeTypes = { rope: RopeEdge }
 
 function toFlow(n: TerminalNodeData, project: Project, selected = false): TerminalFlowNode {
   return {
@@ -19,6 +22,14 @@ function toFlow(n: TerminalNodeData, project: Project, selected = false): Termin
 function CanvasInner({ project }: { project: Project }) {
   const addTerminal = useWorkspace((s) => s.addTerminal)
   const moveNodes = useWorkspace((s) => s.moveNodes)
+  const connect = useWorkspace((s) => s.connect)
+  const disconnect = useWorkspace((s) => s.disconnect)
+  const markSeen = useWorkspace((s) => s.markSeen)
+  const flows = useWorkspace((s) => s.flows)
+  const edges = useMemo<RopeFlowEdge[]>(() => project.edges.map((e) => ({
+    id: e.id, source: e.source, target: e.target, type: 'rope',
+    data: { active: Boolean(flows[[e.source, e.target].sort().join('|')]), onRemove: () => disconnect(project.id, e.id) }
+  })), [project.edges, project.id, flows, disconnect])
   const setViewport = useWorkspace((s) => s.setViewport)
   const [nodes, setNodes, onNodesChange] = useNodesState<TerminalFlowNode>(project.nodes.map((n) => toFlow(n, project)))
   const [modalAt, setModalAt] = useState<XYPosition | null>(null)
@@ -52,8 +63,13 @@ function CanvasInner({ project }: { project: Project }) {
       </div>
       <ReactFlow
         nodes={nodes}
-        edges={[]}
+        edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        connectionMode={ConnectionMode.Loose}
+        onConnect={(c) => { if (c.source && c.target) connect(project.id, c.source, c.target) }}
+        onNodeClick={(_e, n) => markSeen(n.id)}
+        connectionLineStyle={{ stroke: '#F25C1F', strokeWidth: 2 }}
         onNodesChange={onNodesChange}
         onNodeDragStop={(_e, _n, dragged) => moveNodes(project.id, dragged.map((d) => ({ id: d.id, x: d.position.x, y: d.position.y })))}
         onSelectionDragStop={(_e, dragged) => moveNodes(project.id, dragged.map((d) => ({ id: d.id, x: d.position.x, y: d.position.y })))}

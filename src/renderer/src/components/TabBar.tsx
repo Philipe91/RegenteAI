@@ -10,6 +10,11 @@ export function TabBar() {
   const closeProject = useWorkspace((s) => s.closeProject)
   const createProject = useWorkspace((s) => s.createProject)
   const [menu, setMenu] = useState(false)
+  const activity = useWorkspace((s) => s.activity)
+  const tabActivity = (id: string) => {
+    const states = projects[id].nodes.map((n) => activity[n.id])
+    return states.includes('working') ? 'working' : states.includes('attention') ? 'attention' : null
+  }
 
   return (
     <div className="tabbar">
@@ -26,6 +31,7 @@ export function TabBar() {
           >
             <span className="dot" style={{ background: p.color }} />
             <span className="name">{p.name}</span>
+            {tabActivity(id) && <span className={`led ${tabActivity(id)}`} title={tabActivity(id) === 'working' ? 'Agente trabalhando' : 'Agente terminou'} />}
             <button className="close" title="Fechar projeto (salva e encerra os terminais)" onClick={(e) => { e.stopPropagation(); closeProject(id) }}>×</button>
           </div>
         )

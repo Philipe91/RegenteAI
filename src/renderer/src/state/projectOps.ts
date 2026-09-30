@@ -45,16 +45,23 @@ export function setViewport(p: Project, vp: Viewport, now: string): Project {
   return { ...p, viewport: vp, updatedAt: now }
 }
 
-const CASCADE = 32
-const NEAR = 16
+const GAP = 24
 
-/** Evita criar um terminal exatamente em cima de outro: desloca em cascata até achar um ponto livre. */
-export function findFreeSpot(nodes: TerminalNodeData[], pos: { x: number; y: number }): { x: number; y: number } {
-  let spot = { ...pos }
-  while (nodes.some((n) => Math.abs(n.x - spot.x) < NEAR && Math.abs(n.y - spot.y) < NEAR)) {
-    spot = { x: spot.x + CASCADE, y: spot.y + CASCADE }
+const overlaps = (a: { x: number; y: number; width: number; height: number }, b: TerminalNodeData) =>
+  a.x < b.x + b.width + GAP && b.x < a.x + a.width + GAP && a.y < b.y + b.height + GAP && b.y < a.y + a.height + GAP
+
+/** Onde colocar um nó novo sem cobrir nenhum outro: se o lugar estiver ocupado, vai para a direita de quem ocupa. */
+export function findFreeSpot(
+  nodes: TerminalNodeData[],
+  pos: { x: number; y: number },
+  size: { width: number; height: number } = DEFAULT_TERMINAL_SIZE
+): { x: number; y: number } {
+  const spot = { x: pos.x, y: pos.y }
+  for (;;) {
+    const hit = nodes.filter((n) => overlaps({ ...spot, ...size }, n))
+    if (hit.length === 0) return spot
+    spot.x = Math.max(...hit.map((n) => n.x + n.width)) + GAP
   }
-  return spot
 }
 
 export type GeometryUpdate = { id: string } & Partial<Pick<TerminalNodeData, 'x' | 'y' | 'width' | 'height'>>
@@ -66,4 +73,17 @@ export function updateGeometries(p: Project, updates: GeometryUpdate[], now: str
 
 export function projectIdForNode(projects: Record<string, Project>, nodeId: string): string | null {
   return Object.values(projects).find((p) => p.nodes.some((n) => n.id === nodeId))?.id ?? null
+}
+
+/** Liga dois nós com uma corda (sem duplicar, sem laço, só entre nós que existem). */
+export function addEdge(p: Project, source: string, target: string, id: string, now: string): Project {
+  if (source === target) return p
+  if (!p.nodes.some((n) => n.id === source) || !p.nodes.some((n) => n.id === target)) return p
+  const exists = p.edges.some((e) => (e.source === source && e.target === target) || (e.source === target && e.target === source))
+  if (exists) return p
+  return { ...p, edges: [...p.edges, { id, source, target }], updatedAt: now }
+}
+
+export function removeEdge(p: Project, edgeId: string, now: string): Project {
+  return { ...p, edges: p.edges.filter((e) => e.id !== edgeId), updatedAt: now }
 }

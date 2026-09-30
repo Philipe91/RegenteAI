@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { NodeResizer, type Node, type NodeProps } from '@xyflow/react'
+import { Handle, NodeResizer, Position, type Node, type NodeProps } from '@xyflow/react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
@@ -21,6 +21,7 @@ function TerminalNodeView({ data, selected }: NodeProps<TerminalFlowNode>) {
   const setSessionId = useWorkspace((s) => s.setSessionId)
   const removeNode = useWorkspace((s) => s.removeNode)
   const updateGeometry = useWorkspace((s) => s.updateGeometry)
+  const activity = useWorkspace((s) => s.activity[t.id])
 
   useEffect(() => {
     const xterm = new Terminal({
@@ -80,6 +81,8 @@ function TerminalNodeView({ data, selected }: NodeProps<TerminalFlowNode>) {
 
   return (
     <div className={`term-node${selected ? ' selected' : ''}`} data-testid="terminal-node">
+      <Handle type="source" position={Position.Left} id="l" title="Arraste até outro nó para ligar" />
+      <Handle type="source" position={Position.Right} id="r" title="Arraste até outro nó para ligar" />
       <NodeResizer
         isVisible={selected}
         minWidth={240}
@@ -91,6 +94,9 @@ function TerminalNodeView({ data, selected }: NodeProps<TerminalFlowNode>) {
         <span className="dot" style={{ background: t.color }} />
         <strong>{t.name}</strong>
         <span className="agent">{AGENT_LABEL[t.agent]}</span>
+        {activity && (
+          <span className={`status ${activity}`}><span className="led" />{activity === 'working' ? 'trabalhando' : 'pronto'}</span>
+        )}
         <div className="actions nodrag">
           <button title="Reiniciar" onClick={restart}>↻</button>
           <button title="Fechar terminal" onClick={() => removeNode(projectId, t.id)}>×</button>

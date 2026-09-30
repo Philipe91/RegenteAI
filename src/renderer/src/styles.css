@@ -54,3 +54,18 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .menu .item small { color: var(--muted); }
 .toasts { position: fixed; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 60; }
 .toast { background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; padding: 8px 12px; max-width: 420px; font-size: 13px; cursor: pointer; }
+
+.rope.active { stroke-dasharray: 8 6; animation: rope-flow 0.6s linear infinite; }
+@keyframes rope-flow { to { stroke-dashoffset: -14; } }
+.rope-remove { position: absolute; pointer-events: all; width: 22px; height: 22px; padding: 0; border-radius: 50%; font-size: 13px; line-height: 1; }
+.react-flow__handle { width: 10px; height: 10px; background: #3a3a3a; border: 2px solid #6b6259; }
+.react-flow__handle:hover { background: var(--accent); border-color: var(--accent); }
+.status { font-size: 11px; display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
+.status .led { width: 7px; height: 7px; border-radius: 50%; }
+.status.working .led { background: #EAB308; animation: pulse 1s ease-in-out infinite; }
+.status.attention { color: #10B981; }
+.status.attention .led { background: #10B981; }
+@keyframes pulse { 50% { opacity: .25; } }
+.tab .led { width: 6px; height: 6px; border-radius: 50%; }
+.tab .led.working { background: #EAB308; animation: pulse 1s ease-in-out infinite; }
+.tab .led.attention { background: #10B981; }

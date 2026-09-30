@@ -62,6 +62,7 @@ export class TerminalService extends EventEmitter {
   kill(id: string): void {
     this.running.delete(id)
     this.integration?.onKill(id)
+    this.emit('gone', id)
     this.pty.forget(id)
   }
 
@@ -124,5 +125,6 @@ export class TerminalService extends EventEmitter {
     }
     if (r) r.exitCode = code
     this.emit('exit', id, code)
+    this.emit('gone', id)
   }
 }
