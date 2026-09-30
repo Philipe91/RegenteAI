@@ -10,11 +10,12 @@ import { ROLES, type RoleId } from '@shared/roles'
 const toPosix = (p: string) => p.replace(/\\/g, '/')
 
 /** Uma linha só e sem " % < > : o texto passa pela linha de comando (e pelo cmd.exe quando o claude é .cmd). */
-export function systemPromptFor(name: string, role?: RoleId): string {
+export function systemPromptFor(name: string, role?: RoleId, worktree?: { path: string; branch: string }): string {
   const safe = (t: string) => t.replace(/[\r\n"%<>]/g, ' ').replace(/\s+/g, ' ').trim()
   const parts = [
     `Você está rodando dentro do Regente, um canvas onde vários agentes de IA trabalham juntos. Seu nome aqui é ${safe(name)}.`,
     role ? `Seu papel: ${ROLES[role].prompt}` : '',
+    worktree ? `Você trabalha numa pasta isolada (git worktree) na branch ${worktree.branch}, separada dos outros agentes: faça commits pequenos nela, não troque de branch e, ao terminar uma tarefa, informe o hash do último commit para quem pediu integrar.` : '',
     'Comandos no seu terminal (rode pela sua ferramenta de shell):',
     'regente peers lista quem está ligado a você e se está livre;',
     'regente send NOME TAREFA delega trabalho (implementar, testar, pesquisar) e retorna na hora: você segue livre, pode mandar várias em paralelo para agentes diferentes e encerrar seu turno, e cada resposta chega sozinha como uma nova mensagem [Resposta de NOME · tarefa #N] — não fique consultando;',
@@ -22,6 +23,7 @@ export function systemPromptFor(name: string, role?: RoleId): string {
     'regente tasks lista suas tarefas, regente result N mostra um resultado e regente cancel N cancela;',
     'regente browser AÇÃO controla o navegador ligado a você (open, goto, snapshot, click, type, press, screenshot, eval, console, tabs);',
     'regente note lê a nota ligada a você e regente note append TEXTO acrescenta nela;',
+    'Colegas com pasta isolada trabalham cada um na sua branch (regente peers mostra qual); para integrar o trabalho deles, use git merge na pasta principal do projeto.',
     'regente help mostra tudo.',
     'Quando chegar [Mensagem de NOME via Regente] ou [Tarefa #N de NOME via Regente], faça o pedido e termine com um resumo objetivo do resultado (o que fez, onde, o que falta): essa resposta final volta sozinha para quem pediu.'
   ]
@@ -62,7 +64,7 @@ export class RegenteIntegration implements TerminalIntegration {
     const settingsPath = join(this.hooksDir, `${req.node.id}.json`)
     const hooks = { SessionStart: [hook('session')], UserPromptSubmit: [hook('prompt')], Stop: [hook('stop')], Notification: [hook('notification')] }
     writeFileSync(settingsPath, JSON.stringify({ hooks }, null, 2), 'utf8')
-    return { settingsPath, systemPrompt: systemPromptFor(req.node.name, req.node.role) }
+    return { settingsPath, systemPrompt: systemPromptFor(req.node.name, req.node.role, req.node.worktree) }
   }
 
   onKill(terminalId: string): void {

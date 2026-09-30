@@ -18,6 +18,8 @@ export interface TerminalNodeData {
   sessionId?: string
   command?: string
   role?: RoleId
+  /** Pasta isolada (git worktree) onde este agente trabalha, com branch própria. */
+  worktree?: { path: string; branch: string }
 }
 
 /** Nó que representa o navegador real do usuário, controlado pelos agentes ligados a ele. */

@@ -16,6 +16,10 @@ const api: RegenteApi = {
     onState: (cb) => listen(IPC.browserState, cb)
   },
   note: { onUpdate: (cb) => listen(IPC.noteUpdate, cb) },
+  git: {
+    isRepo: (cwd) => ipcRenderer.invoke(IPC.gitIsRepo, cwd),
+    worktree: (projectId, cwd, name) => ipcRenderer.invoke(IPC.gitWorktree, projectId, cwd, name)
+  },
   topology: {
     update: (projectId, nodes, edges) => ipcRenderer.send(IPC.topologyUpdate, projectId, nodes, edges),
     remove: (projectId) => ipcRenderer.send(IPC.topologyRemove, projectId)

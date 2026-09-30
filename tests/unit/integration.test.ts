@@ -19,3 +19,10 @@ test('texto preservado (acentos e palavras com s intactos)', () => {
   expect(systemPromptFor('X')).toContain('regente send NOME TAREFA delega trabalho')
   expect(systemPromptFor('X')).toContain('regente ask NOME PERGUNTA só para perguntas rápidas')
 })
+
+test('agente com pasta isolada é instruído a commitar na branch dele', () => {
+  const p = systemPromptFor('Dev1', undefined, { path: 'C:/x', branch: 'regente/dev1' })
+  expect(p).toContain('branch regente/dev1')
+  expect(p).toContain('commit')
+  expect(systemPromptFor('Dev1')).not.toContain('pasta isolada (git worktree) na branch')
+})

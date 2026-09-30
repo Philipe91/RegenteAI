@@ -18,7 +18,7 @@ function toFlow(n: CanvasNodeData, project: Project, selected = false): FlowNode
   const base = { id: n.id, position: { x: n.x, y: n.y }, width: n.width, height: n.height, dragHandle: '.term-header', selected }
   if (n.kind === 'browser') return { ...base, type: 'browser', data: { browser: n, projectId: project.id } }
   if (n.kind === 'note') return { ...base, type: 'note', data: { note: n, projectId: project.id } }
-  return { ...base, type: 'terminal', data: { term: n, projectId: project.id, cwd: project.cwd } }
+  return { ...base, type: 'terminal', data: { term: n, projectId: project.id, cwd: n.worktree?.path ?? project.cwd } }
 }
 
 function CanvasInner({ project }: { project: Project }) {
@@ -132,6 +132,8 @@ function CanvasInner({ project }: { project: Project }) {
         <NewTerminalModal
           count={project.nodes.length}
           onCancel={() => setModalAt(null)}
+          projectId={project.id}
+          cwd={project.cwd}
           onCreate={(v) => { addTerminal(project.id, { ...v, ...findFreeSpot(project.nodes, modalAt) }); setModalAt(null) }}
         />
       )}

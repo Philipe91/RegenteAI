@@ -1,6 +1,6 @@
 import type { EdgeData } from '@shared/types'
 
-export interface TopoNode { id: string; name: string; agent: string; kind: 'terminal' | 'browser' | 'note'; text?: string }
+export interface TopoNode { id: string; name: string; agent: string; kind: 'terminal' | 'browser' | 'note'; text?: string; branch?: string }
 
 interface ProjectTopo { nodes: TopoNode[]; edges: EdgeData[] }
 

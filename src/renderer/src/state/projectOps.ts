@@ -7,12 +7,13 @@ export const DEFAULT_NOTE_SIZE = { width: 320, height: 260 }
 const MIN_W = 240
 const MIN_H = 140
 
-export interface NewTerminalInput { agent: AgentId; name: string; color: string; command?: string; role?: RoleId; x: number; y: number }
+export interface NewTerminalInput { agent: AgentId; name: string; color: string; command?: string; role?: RoleId; worktree?: { path: string; branch: string }; x: number; y: number }
 
 export function addTerminal(p: Project, input: NewTerminalInput, id: string, now: string): Project {
   const node: TerminalNodeData = { id, kind: 'terminal', ...input, ...DEFAULT_TERMINAL_SIZE }
   if (!input.command) delete node.command
   if (!input.role) delete node.role
+  if (!input.worktree) delete node.worktree
   return { ...p, nodes: [...p.nodes, node], updatedAt: now }
 }
 

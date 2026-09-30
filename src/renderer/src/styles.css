@@ -91,3 +91,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .tab .led.needs-user { background: #ef4444; animation: pulse 0.8s ease-in-out infinite; }
 .queue-badge { font-size: 10px; color: #EAB308; border: 1px solid #5a4a14; border-radius: 4px; padding: 0 5px; }
 .term-header .resume { font-size: 11px; padding: 0 8px; background: #3a1d12; border-color: var(--accent); }
+
+.modal .check { flex-direction: row; align-items: center; gap: 8px; color: var(--text); font-size: 13px; }
+.modal-error { color: #ef4444; font-size: 12px; }
+.branch-badge { font-size: 10px; color: #8ab4f8; border: 1px solid #2a3b55; border-radius: 4px; padding: 0 5px; font-family: 'Cascadia Mono', Consolas, monospace; }

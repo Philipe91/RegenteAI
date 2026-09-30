@@ -52,7 +52,7 @@ interface WorkspaceState {
 
 /** O motor precisa saber nomes e cordas para o `regente peers/ask/browser`. */
 const syncTopology = (p: Project) =>
-  window.regente.topology.update(p.id, p.nodes.map((n) => ({ id: n.id, name: n.name, agent: n.kind === 'terminal' ? n.agent : n.kind, kind: n.kind, ...(n.kind === 'note' ? { text: n.text } : {}) })), p.edges)
+  window.regente.topology.update(p.id, p.nodes.map((n) => ({ id: n.id, name: n.name, agent: n.kind === 'terminal' ? n.agent : n.kind, kind: n.kind, ...(n.kind === 'note' ? { text: n.text } : {}), ...(n.kind === 'terminal' && n.worktree ? { branch: n.worktree.branch } : {}) })), p.edges)
 
 const saver = createSaver((p) => { void window.regente.projects.save(p) }, 400)
 const now = () => new Date().toISOString()

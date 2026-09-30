@@ -11,8 +11,10 @@ import type { Topology, TopoNode } from './bridge/topology'
 import type { BrowserManager } from './browser/manager'
 import { runBrowserCommand } from './browser/commands'
 import type { Orchestrator } from './bridge/orchestrator'
+import { join } from 'node:path'
+import { createAgentWorktree, gitRoot } from './git/worktree'
 
-export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: TerminalService, pty: PtyManager, topology: Topology, browsers: BrowserManager, orchestrator: Orchestrator): void {
+export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: TerminalService, pty: PtyManager, topology: Topology, browsers: BrowserManager, orchestrator: Orchestrator, dataDir: string): void {
   const send = (channel: string, ...args: unknown[]) => { if (!win.isDestroyed()) win.webContents.send(channel, ...args) }
 
   ipcMain.handle(IPC.projectsList, () => store.list())
@@ -41,6 +43,14 @@ export function registerIpc(win: BrowserWindow, store: ProjectStore, terminals: 
     await runBrowserCommand(browsers, nodeId, 'goto', [url])
   }))
   browsers.on('state', (nodeId: string, state: unknown) => send(IPC.browserState, nodeId, state))
+  ipcMain.handle(IPC.gitIsRepo, (_e, cwd: string) => gitRoot(cwd) !== null)
+  ipcMain.handle(IPC.gitWorktree, (_e, projectId: string, cwd: string, name: string) => {
+    try {
+      return { ok: true, ...createAgentWorktree(join(dataDir, 'worktrees', projectId), cwd, name) }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  })
   ipcMain.on(IPC.termResume, (_e, id: string) => orchestrator.resume(id))
   ipcMain.on(IPC.topologyUpdate, (_e, projectId: string, nodes: TopoNode[], edges: EdgeData[]) => topology.update(projectId, nodes, edges))
   ipcMain.on(IPC.topologyRemove, (_e, projectId: string) => topology.remove(projectId))

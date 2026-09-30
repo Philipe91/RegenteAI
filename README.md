@@ -91,3 +91,10 @@ regente send Dev2 "implemente o cadastro com testes"
 - `regente ask` fica para perguntas rápidas (espera até 9 min).
 
 O Regente cuida do resto: uma entrega por agente de cada vez, só quando ele está livre e pronto; cada mensagem tem uma marca única, então a resposta nunca vem do turno errado; agente que pede permissão aparece como **precisa de você** (vermelho, com notificação); e se dois agentes entrarem em laço (mais de 30 mensagens automáticas em 10 min para o mesmo agente), a fila dele pausa até você clicar em **Retomar**.
+
+## Vários agentes no mesmo repositório (pasta isolada)
+Se a pasta do projeto é um repositório git, o modal de novo terminal mostra **Pasta isolada (git worktree, branch própria)**. Marcada, o Regente cria uma cópia de trabalho do repositório só para aquele agente, na branch `regente/<nome>` (em `%APPDATA%\Regente\worktrees`), e o terminal abre lá.
+
+- Cada Dev edita e faz commits na sua branch, sem pisar nos arquivos dos outros.
+- O agente é instruído a commitar e informar o hash ao terminar; `regente peers` mostra a branch de cada um; o Líder integra com `git merge` na pasta principal.
+- Remover o nó do canvas **não apaga** a pasta nem a branch (nada se perde). Para limpar: `git worktree remove <pasta>` e `git branch -d regente/<nome>`.

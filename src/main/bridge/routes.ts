@@ -28,7 +28,7 @@ export function registerBridgeRoutes(bridge: Bridge, { topology, pty, orchestrat
       else if (!pty.isRunning(n.id)) status = 'exited'
       else if (orchestrator.isPaused(n.id)) status = 'paused'
       else status = orchestrator.status(n.id) === 'idle' && orchestrator.queueSize(n.id) > 0 ? 'working' : orchestrator.status(n.id)
-      return { name: n.name, agent: n.agent, kind: n.kind, status }
+      return { name: n.name, agent: n.agent, kind: n.kind, status, ...(n.branch ? { branch: n.branch } : {}) }
     })
   )
 

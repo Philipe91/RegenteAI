@@ -64,7 +64,7 @@ if (!app.requestSingleInstanceLock()) {
       webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true }
     })
     guardWebContents(win.webContents, (u) => void shell.openExternal(u))
-    registerIpc(win, store, terminals, pty, topology, browsers, orchestrator)
+    registerIpc(win, store, terminals, pty, topology, browsers, orchestrator, dataDir)
 
     // Notificações do Windows. As referências ficam guardadas: sem isso o clique pode se perder (coleta de lixo).
     const toasts = new Set<Notification>()

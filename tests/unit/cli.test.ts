@@ -140,3 +140,12 @@ describe('runCli — tarefas', () => {
     expect(err.join('')).toMatch(/uso: regente send[\s\S]*uso: regente result/)
   })
 })
+
+test('peers mostra a branch de quem tem pasta isolada', async () => {
+  bridge = new Bridge()
+  bridge.route('/peers', () => [{ name: 'Dev1', agent: 'claude', kind: 'terminal', status: 'idle', branch: 'regente/dev1' }])
+  const url = await bridge.listen()
+  const { x, out } = io({ REGENTE_URL: url, REGENTE_TOKEN: bridge.issueToken('t') })
+  expect(await runCli(['peers'], x)).toBe(0)
+  expect(out.join('')).toMatch(/Dev1 \(Claude Code\) — livre · branch regente\/dev1/)
+})

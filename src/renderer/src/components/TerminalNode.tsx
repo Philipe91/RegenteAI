@@ -103,6 +103,7 @@ function TerminalNodeView({ data, selected }: NodeProps<TerminalFlowNode>) {
         {activity && (
           <span className={`status ${activity}`}><span className="led" />{ACTIVITY_LABEL[activity]}</span>
         )}
+        {t.worktree && <span className="branch-badge" title={t.worktree.path}>⎇ {t.worktree.branch}</span>}
         {queued > 1 && <span className="queue-badge" title="Entregas esperando este agente">{queued - 1} na fila</span>}
         {isPaused && <button className="resume nodrag" title="Mensagens automáticas demais: a fila foi pausada" onClick={() => window.regente.term.resume(t.id)}>Retomar</button>}
         <div className="actions nodrag">

@@ -26,6 +26,8 @@ export const IPC = {
   termPaused: 'term:paused',
   termResume: 'term:resume',
   noteUpdate: 'note:update',
+  gitIsRepo: 'git:is-repo',
+  gitWorktree: 'git:worktree',
   browserOpen: 'browser:open',
   browserClose: 'browser:close',
   browserGoto: 'browser:goto',
@@ -44,8 +46,13 @@ export interface RegenteApi {
     onState(cb: (nodeId: string, state: BrowserUiState) => void): () => void
   }
   note: { onUpdate(cb: (nodeId: string, text: string) => void): () => void }
+  git: {
+    isRepo(cwd: string): Promise<boolean>
+    /** Cria a pasta isolada (git worktree) de um agente novo. */
+    worktree(projectId: string, cwd: string, name: string): Promise<{ ok: true; path: string; branch: string } | { ok: false; error: string }>
+  }
   topology: {
-    update(projectId: string, nodes: Array<{ id: string; name: string; agent: string; kind: 'terminal' | 'browser' | 'note'; text?: string }>, edges: EdgeData[]): void
+    update(projectId: string, nodes: Array<{ id: string; name: string; agent: string; kind: 'terminal' | 'browser' | 'note'; text?: string; branch?: string }>, edges: EdgeData[]): void
     remove(projectId: string): void
   }
   projects: {

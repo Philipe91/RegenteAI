@@ -85,10 +85,11 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
 
   try {
     if (cmd === 'peers') {
-      const peers = (await call(io, '/peers', {})) as Array<{ name: string; agent: string; kind: string; status: string }>
+      const peers = (await call(io, '/peers', {})) as Array<{ name: string; agent: string; kind: string; status: string; branch?: string }>
       if (peers.length === 0) io.out('Ninguém está ligado a você. Ligue terminais com uma corda no canvas.\n')
       for (const p of peers) {
-        io.out(`${p.name} (${AGENT_LABEL[p.kind === 'browser' ? 'browser' : p.agent] ?? p.agent}) — ${STATUS_LABEL[p.status] ?? p.status}\n`)
+        const branch = p.branch ? ` · branch ${p.branch}` : ''
+        io.out(`${p.name} (${AGENT_LABEL[p.kind === 'terminal' ? p.agent : p.kind] ?? p.agent}) — ${STATUS_LABEL[p.status] ?? p.status}${branch}\n`)
       }
       return 0
     }
