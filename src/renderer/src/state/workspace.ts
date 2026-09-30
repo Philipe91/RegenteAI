@@ -25,6 +25,8 @@ interface WorkspaceState {
   focusRequest: { nodeId: string; at: number } | null
   setBrowserPref(pref: BrowserPref): void
   addBrowser(projectId: string, input: { name: string; color: string; x: number; y: number }): void
+  addNote(projectId: string, input: { name: string; color: string; x: number; y: number }): void
+  setNoteText(projectId: string, nodeId: string, text: string): void
   init(): Promise<void>
   connect(projectId: string, source: string, target: string): void
   disconnect(projectId: string, edgeId: string): void
@@ -46,7 +48,7 @@ interface WorkspaceState {
 
 /** O motor precisa saber nomes e cordas para o `regente peers/ask/browser`. */
 const syncTopology = (p: Project) =>
-  window.regente.topology.update(p.id, p.nodes.map((n) => ({ id: n.id, name: n.name, agent: n.kind === 'terminal' ? n.agent : 'browser', kind: n.kind })), p.edges)
+  window.regente.topology.update(p.id, p.nodes.map((n) => ({ id: n.id, name: n.name, agent: n.kind === 'terminal' ? n.agent : n.kind, kind: n.kind, ...(n.kind === 'note' ? { text: n.text } : {}) })), p.edges)
 
 const saver = createSaver((p) => { void window.regente.projects.save(p) }, 400)
 const now = () => new Date().toISOString()
@@ -93,6 +95,10 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
         set({ focusRequest: { nodeId, at: Date.now() } })
         get().markSeen(nodeId)
       })
+      window.regente.note.onUpdate((nodeId, text) => {
+        const pid = ops.projectIdForNode(get().projects, nodeId)
+        if (pid) get().setNoteText(pid, nodeId, text)
+      })
       window.regente.browser.onState((nodeId, state) => {
         const prev = get().browserStates[nodeId]
         // Mantém a última prévia enquanto não chega outra (ex.: estado sem print).
@@ -137,7 +143,10 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
       const p = get().projects[id]
       if (!p) return
       saver.flush()
-      p.nodes.forEach((n) => (n.kind === 'browser' ? void window.regente.browser.close(n.id) : window.regente.term.kill(n.id)))
+      p.nodes.forEach((n) => {
+        if (n.kind === 'browser') void window.regente.browser.close(n.id)
+        else if (n.kind === 'terminal') window.regente.term.kill(n.id)
+      })
       window.regente.topology.remove(id)
       const idx = get().openIds.indexOf(id)
       const openIds = get().openIds.filter((x) => x !== id)
@@ -154,7 +163,7 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     removeNode(projectId, nodeId) {
       const node = get().projects[projectId]?.nodes.find((n) => n.id === nodeId)
       if (node?.kind === 'browser') void window.regente.browser.close(nodeId)
-      else window.regente.term.kill(nodeId)
+      else if (node?.kind === 'terminal') window.regente.term.kill(nodeId)
       mutate(projectId, (p) => ops.removeNode(p, nodeId, now()))
     },
 
@@ -162,6 +171,8 @@ export const useWorkspace = create<WorkspaceState>((set, get) => {
     moveNodes(projectId, updates) { mutate(projectId, (p) => ops.updateGeometries(p, updates, now())) },
     setBrowserPref(pref) { set({ browserPref: pref }); saveApp() },
     setNotifyPref(on) { set({ notifyPref: on }); saveApp() },
+    addNote(projectId, input) { mutate(projectId, (p) => ops.addNote(p, input, crypto.randomUUID(), now())) },
+    setNoteText(projectId, nodeId, text) { mutate(projectId, (p) => ops.setNoteText(p, nodeId, text, now())) },
     addBrowser(projectId, input) { mutate(projectId, (p) => ops.addBrowser(p, input, crypto.randomUUID(), now())) },
     connect(projectId, source, target) { mutate(projectId, (p) => ops.addEdge(p, source, target, crypto.randomUUID(), now())) },
     disconnect(projectId, edgeId) { mutate(projectId, (p) => ops.removeEdge(p, edgeId, now())) },

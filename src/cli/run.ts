@@ -17,6 +17,10 @@ const HELP = `Regente — conversa entre agentes
         open [url] | goto <url> | back | reload | snapshot | click <n|seletor>
         type <n|seletor> "<texto>" | press <tecla> | screenshot | eval "<js>"
         console | tabs | tab <n> | endpoint
+  regente note [read]                    lê a nota ligada a você
+  regente note append <texto>            acrescenta uma linha na nota
+  regente note write <texto>             substitui o conteúdo da nota
+        [--nota NOME]                    quando houver mais de uma nota ligada
 `
 
 class Unreachable extends Error {}
@@ -86,6 +90,20 @@ export async function runCli(argv: string[], io: CliIO): Promise<number> {
       if (!to || !message) { io.err('uso: regente ask <nome> "<mensagem>" [--timeout <min>]\n'); return 2 }
       const reply = await call(io, '/ask', { to, message, ...(timeoutMin ? { timeoutMin } : {}) })
       io.out(`${String(reply)}\n`)
+      return 0
+    }
+    if (cmd === 'note') {
+      const i = args.indexOf('--nota')
+      const name = i >= 0 ? args[i + 1] : undefined
+      const rest = i >= 0 ? [...args.slice(0, i), ...args.slice(i + 2)] : args
+      const [action = 'read', ...words] = rest
+      const text = words.join(' ').trim()
+      if (!['read', 'write', 'append'].includes(action) || (action !== 'read' && !text)) {
+        io.err('uso: regente note [read] | regente note write <texto> | regente note append <texto>   [--nota NOME]\n')
+        return 2
+      }
+      const r = (await call(io, '/note', { action, ...(action !== 'read' ? { text } : {}), ...(name ? { name } : {}) })) as { text: string }
+      io.out(`${r.text}\n`)
       return 0
     }
     if (cmd === 'browser') {

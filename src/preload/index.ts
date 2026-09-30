@@ -15,6 +15,7 @@ const api: RegenteApi = {
     goto: (nodeId, url) => ipcRenderer.invoke(IPC.browserGoto, nodeId, url),
     onState: (cb) => listen(IPC.browserState, cb)
   },
+  note: { onUpdate: (cb) => listen(IPC.noteUpdate, cb) },
   topology: {
     update: (projectId, nodes, edges) => ipcRenderer.send(IPC.topologyUpdate, projectId, nodes, edges),
     remove: (projectId) => ipcRenderer.send(IPC.topologyRemove, projectId)

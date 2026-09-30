@@ -22,6 +22,7 @@ export const IPC = {
   topologyUpdate: 'topology:update',
   termStatus: 'term:status',
   termFocus: 'term:focus',
+  noteUpdate: 'note:update',
   browserOpen: 'browser:open',
   browserClose: 'browser:close',
   browserGoto: 'browser:goto',
@@ -39,8 +40,9 @@ export interface RegenteApi {
     goto(nodeId: string, url: string): Promise<{ ok: boolean; error?: string }>
     onState(cb: (nodeId: string, state: BrowserUiState) => void): () => void
   }
+  note: { onUpdate(cb: (nodeId: string, text: string) => void): () => void }
   topology: {
-    update(projectId: string, nodes: Array<{ id: string; name: string; agent: string; kind: 'terminal' | 'browser' }>, edges: EdgeData[]): void
+    update(projectId: string, nodes: Array<{ id: string; name: string; agent: string; kind: 'terminal' | 'browser' | 'note'; text?: string }>, edges: EdgeData[]): void
     remove(projectId: string): void
   }
   projects: {

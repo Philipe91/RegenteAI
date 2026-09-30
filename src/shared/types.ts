@@ -32,7 +32,20 @@ export interface BrowserNodeData {
   height: number
 }
 
-export type CanvasNodeData = TerminalNodeData | BrowserNodeData
+/** Nota de texto (markdown) que você e os agentes ligados leem e escrevem. */
+export interface NoteNodeData {
+  id: string
+  kind: 'note'
+  name: string
+  color: string
+  x: number
+  y: number
+  width: number
+  height: number
+  text: string
+}
+
+export type CanvasNodeData = TerminalNodeData | BrowserNodeData | NoteNodeData
 
 export type BrowserPref = 'auto' | 'chrome' | 'edge' | 'brave'
 export const BROWSER_PREFS: BrowserPref[] = ['auto', 'chrome', 'edge', 'brave']

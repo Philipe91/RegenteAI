@@ -82,3 +82,5 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .roles button { font-size: 12px; padding: 4px 6px; }
 .roles button.on { border-color: var(--accent); background: #2a2320; }
 .role-badge { font-size: 10px; font-weight: 600; color: #111; border-radius: 4px; padding: 1px 6px; }
+.note-node { background: #1b1813; }
+.note-text { flex: 1; min-height: 0; resize: none; border: none; outline: none; background: transparent; color: var(--text); padding: 10px 12px; font: 13px/1.5 'Cascadia Mono', Consolas, monospace; }

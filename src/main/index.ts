@@ -52,7 +52,10 @@ if (!app.requestSingleInstanceLock()) {
     })
     const flow = (from: string, to: string, active: boolean) => { if (win && !win.isDestroyed()) win.webContents.send(IPC.termFlow, from, to, active) }
     terminals.on('spawned', (id: string) => broker.markStarting(id))
-    registerBridgeRoutes(bridge, { topology, pty, broker, browsers, onFlow: flow })
+    registerBridgeRoutes(bridge, {
+      topology, pty, broker, browsers, onFlow: flow,
+      onNoteChange: (nodeId, text) => { if (win && !win.isDestroyed()) win.webContents.send(IPC.noteUpdate, nodeId, text) }
+    })
 
     win = new BrowserWindow({
       width: 1400, height: 900, backgroundColor: '#101010', title: 'Regente', autoHideMenuBar: true,

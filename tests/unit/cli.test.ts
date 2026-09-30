@@ -86,3 +86,26 @@ describe('runCli', () => {
     expect(out.join('')).toMatch(/regente ask/)
   })
 })
+
+describe('runCli note', () => {
+  test('read (padrão), write e append com --nota', async () => {
+    bridge = new Bridge()
+    const calls: any[] = []
+    bridge.route('/note', (_c, body) => { calls.push(body); return { text: 'ok' } })
+    const url = await bridge.listen()
+    const env = { REGENTE_URL: url, REGENTE_TOKEN: bridge.issueToken('t') }
+    expect(await runCli(['note'], io(env).x)).toBe(0)
+    expect(await runCli(['note', 'append', 'fazer', 'login', '--nota', 'Tarefas'], io(env).x)).toBe(0)
+    expect(await runCli(['note', 'write', 'tudo novo'], io(env).x)).toBe(0)
+    expect(calls).toEqual([
+      { action: 'read' },
+      { action: 'append', text: 'fazer login', name: 'Tarefas' },
+      { action: 'write', text: 'tudo novo' }
+    ])
+  })
+  test('append sem texto → uso', async () => {
+    const { x, err } = io({ REGENTE_URL: 'http://127.0.0.1:1', REGENTE_TOKEN: 'x' })
+    expect(await runCli(['note', 'append'], x)).toBe(2)
+    expect(err.join('')).toMatch(/uso: regente note/)
+  })
+})

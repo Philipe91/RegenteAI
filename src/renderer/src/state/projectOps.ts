@@ -1,8 +1,9 @@
 import type { RoleId } from '@shared/roles'
-import type { AgentId, BrowserNodeData, CanvasNodeData, Project, TerminalNodeData, Viewport } from '@shared/types'
+import type { AgentId, BrowserNodeData, CanvasNodeData, NoteNodeData, Project, TerminalNodeData, Viewport } from '@shared/types'
 
 export const DEFAULT_TERMINAL_SIZE = { width: 640, height: 400 }
 export const DEFAULT_BROWSER_SIZE = { width: 460, height: 340 }
+export const DEFAULT_NOTE_SIZE = { width: 320, height: 260 }
 const MIN_W = 240
 const MIN_H = 140
 
@@ -18,6 +19,21 @@ export function addTerminal(p: Project, input: NewTerminalInput, id: string, now
 export function addBrowser(p: Project, input: { name: string; color: string; x: number; y: number }, id: string, now: string): Project {
   const node: BrowserNodeData = { id, kind: 'browser', ...input, ...DEFAULT_BROWSER_SIZE }
   return { ...p, nodes: [...p.nodes, node], updatedAt: now }
+}
+
+export function addNote(p: Project, input: { name: string; color: string; x: number; y: number }, id: string, now: string): Project {
+  const node: NoteNodeData = { id, kind: 'note', ...input, text: '', ...DEFAULT_NOTE_SIZE }
+  return { ...p, nodes: [...p.nodes, node], updatedAt: now }
+}
+
+export function setNoteText(p: Project, nodeId: string, text: string, now: string): Project {
+  return { ...p, nodes: p.nodes.map((n) => (n.id === nodeId && n.kind === 'note' ? { ...n, text } : n)), updatedAt: now }
+}
+
+/** Acrescenta uma linha no fim, sem deixar linhas vazias sobrando. */
+export function appendLine(text: string, line: string): string {
+  const base = text.replace(/\n+$/, '')
+  return base ? `${base}\n${line}` : line
 }
 
 export function removeNode(p: Project, nodeId: string, now: string): Project {

@@ -1,6 +1,6 @@
 import type { EdgeData } from '@shared/types'
 
-export interface TopoNode { id: string; name: string; agent: string; kind: 'terminal' | 'browser' }
+export interface TopoNode { id: string; name: string; agent: string; kind: 'terminal' | 'browser' | 'note'; text?: string }
 
 interface ProjectTopo { nodes: TopoNode[]; edges: EdgeData[] }
 
@@ -39,6 +39,24 @@ export class Topology {
     const b = this.peers(id).find((n) => n.kind === 'browser')
     if (!b) throw new Error('Nenhum navegador ligado a você. No canvas, clique em "+ Navegador" e ligue-o a este terminal com uma corda.')
     return b
+  }
+
+  /** A nota ligada (pelo nome, se houver mais de uma). */
+  notePeer(id: string, name?: string): TopoNode {
+    const notes = this.peers(id).filter((n) => n.kind === 'note')
+    if (notes.length === 0) throw new Error('Nenhuma nota ligada a você. No canvas, clique em "+ Nota" e ligue-a a este terminal com uma corda.')
+    if (name) {
+      const hit = notes.find((n) => norm(n.name) === norm(name))
+      if (!hit) throw new Error(`Nenhuma nota "${name}" ligada a você. Notas ligadas: ${notes.map((n) => n.name).join(', ')}.`)
+      return hit
+    }
+    if (notes.length > 1) throw new Error(`Há ${notes.length} notas ligadas a você (${notes.map((n) => n.name).join(', ')}). Diga qual com --nota NOME.`)
+    return notes[0]
+  }
+
+  setNoteText(id: string, text: string): void {
+    const owner = this.node(id)
+    if (owner) owner.node.text = text
   }
 
   findPeer(id: string, name: string): TopoNode | null {

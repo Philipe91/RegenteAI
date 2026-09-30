@@ -4,25 +4,27 @@ import { RopeEdge, type RopeFlowEdge } from './RopeEdge'
 import '@xyflow/react/dist/style.css'
 import type { CanvasNodeData, Project } from '@shared/types'
 import { BrowserNode, type BrowserFlowNode } from './BrowserNode'
+import { NoteNode, type NoteFlowNode } from './NoteNode'
 import { useWorkspace } from '../state/workspace'
-import { DEFAULT_BROWSER_SIZE, DEFAULT_TERMINAL_SIZE, findFreeSpot } from '../state/projectOps'
+import { DEFAULT_BROWSER_SIZE, DEFAULT_NOTE_SIZE, DEFAULT_TERMINAL_SIZE, findFreeSpot } from '../state/projectOps'
 import { TerminalNode, type TerminalFlowNode } from './TerminalNode'
 import { NewTerminalModal } from './NewTerminalModal'
 
-const nodeTypes = { terminal: TerminalNode, browser: BrowserNode }
-type FlowNode = TerminalFlowNode | BrowserFlowNode
+const nodeTypes = { terminal: TerminalNode, browser: BrowserNode, note: NoteNode }
+type FlowNode = TerminalFlowNode | BrowserFlowNode | NoteFlowNode
 const edgeTypes = { rope: RopeEdge }
 
 function toFlow(n: CanvasNodeData, project: Project, selected = false): FlowNode {
   const base = { id: n.id, position: { x: n.x, y: n.y }, width: n.width, height: n.height, dragHandle: '.term-header', selected }
-  return n.kind === 'browser'
-    ? { ...base, type: 'browser', data: { browser: n, projectId: project.id } }
-    : { ...base, type: 'terminal', data: { term: n, projectId: project.id, cwd: project.cwd } }
+  if (n.kind === 'browser') return { ...base, type: 'browser', data: { browser: n, projectId: project.id } }
+  if (n.kind === 'note') return { ...base, type: 'note', data: { note: n, projectId: project.id } }
+  return { ...base, type: 'terminal', data: { term: n, projectId: project.id, cwd: project.cwd } }
 }
 
 function CanvasInner({ project }: { project: Project }) {
   const addTerminal = useWorkspace((s) => s.addTerminal)
   const addBrowser = useWorkspace((s) => s.addBrowser)
+  const addNote = useWorkspace((s) => s.addNote)
   const moveNodes = useWorkspace((s) => s.moveNodes)
   const connect = useWorkspace((s) => s.connect)
   const disconnect = useWorkspace((s) => s.disconnect)
@@ -76,6 +78,13 @@ function CanvasInner({ project }: { project: Project }) {
           const count = project.nodes.filter((n) => n.kind === 'browser').length
           addBrowser(project.id, { name: count ? `Navegador ${count + 1}` : 'Navegador', color: '#3B82F6', ...at })
         }}>+ Navegador</button>
+        <button data-testid="new-note" onClick={() => {
+          const r = wrapRef.current!.getBoundingClientRect()
+          const c = rf.screenToFlowPosition({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
+          const at = findFreeSpot(project.nodes, { x: c.x - DEFAULT_NOTE_SIZE.width / 2, y: c.y - DEFAULT_NOTE_SIZE.height / 2 }, DEFAULT_NOTE_SIZE)
+          const count = project.nodes.filter((n) => n.kind === 'note').length
+          addNote(project.id, { name: count ? `Nota ${count + 1}` : 'Tarefas', color: '#EAB308', ...at })
+        }}>+ Nota</button>
         <button onClick={() => void rf.fitView({ padding: 0.2, duration: 300 })}>Enquadrar tudo</button>
       </div>
       <ReactFlow

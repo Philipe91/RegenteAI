@@ -6,6 +6,7 @@ const isStr = (v: unknown): v is string => typeof v === 'string'
 
 function isNode(v: unknown): boolean {
   if (!isObj(v) || !isStr(v.id) || !isStr(v.name) || !isNum(v.x) || !isNum(v.y) || !isNum(v.width) || !isNum(v.height)) return false
+  if (v.kind === 'note') return isStr(v.text)
   return v.kind === 'browser' || isStr(v.agent)
 }
 

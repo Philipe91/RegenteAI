@@ -39,3 +39,26 @@ describe('browserPeer', () => {
     expect(() => t.browserPeer('r')).toThrow(/Nenhum navegador ligado a você/)
   })
 })
+
+describe('notas na topologia', () => {
+  const withNotes = () => {
+    const t = new Topology()
+    t.update('p1', [...nodes,
+      { id: 'n1', name: 'Tarefas', agent: 'note', kind: 'note' as const, text: 'a' },
+      { id: 'n2', name: 'Ideias', agent: 'note', kind: 'note' as const, text: 'b' }
+    ], [{ id: 'e1', source: 'l', target: 'n1' }, { id: 'e2', source: 'l', target: 'n2' }, { id: 'e3', source: 'r', target: 'n1' }])
+    return t
+  }
+  test('uma nota ligada: acha sem nome; várias: exige nome e lista', () => {
+    const t = withNotes()
+    expect(t.notePeer('r').id).toBe('n1')
+    expect(() => t.notePeer('l')).toThrow(/Há 2 notas ligadas a você \(Tarefas, Ideias\)/)
+    expect(t.notePeer('l', 'ideias').id).toBe('n2')
+    expect(() => t.notePeer('s')).toThrow(/Nenhuma nota ligada a você/)
+  })
+  test('setNoteText atualiza a cópia local', () => {
+    const t = withNotes()
+    t.setNoteText('n1', 'novo')
+    expect(t.notePeer('r').text).toBe('novo')
+  })
+})

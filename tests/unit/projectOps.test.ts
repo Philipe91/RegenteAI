@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { newProject } from '@shared/types'
-import { addBrowser, addEdge, addTerminal, DEFAULT_BROWSER_SIZE, DEFAULT_TERMINAL_SIZE, findFreeSpot, projectIdForNode, removeEdge, removeNode, updateGeometries, setSessionId, setViewport, updateGeometry } from '../../src/renderer/src/state/projectOps'
+import { addBrowser, addEdge, addNote, addTerminal, appendLine, DEFAULT_BROWSER_SIZE, DEFAULT_NOTE_SIZE, setNoteText, DEFAULT_TERMINAL_SIZE, findFreeSpot, projectIdForNode, removeEdge, removeNode, updateGeometries, setSessionId, setViewport, updateGeometry } from '../../src/renderer/src/state/projectOps'
 
 const T0 = '2026-09-30T12:00:00.000Z'
 const T1 = '2026-09-30T12:05:00.000Z'
@@ -119,5 +119,18 @@ describe('papéis', () => {
     expect(p.nodes[0]).toMatchObject({ role: 'reviewer' })
     const q = addTerminal(base(), { agent: 'claude', name: 'C', color: '#fff', x: 0, y: 0, role: undefined }, 'c', T1)
     expect(q.nodes[0]).not.toHaveProperty('role')
+  })
+})
+
+describe('notas', () => {
+  test('addNote cria nota vazia; setNoteText troca o texto', () => {
+    let p = addNote(base(), { name: 'Tarefas', color: '#EAB308', x: 0, y: 0 }, 'n', T1)
+    expect(p.nodes[0]).toEqual({ id: 'n', kind: 'note', name: 'Tarefas', color: '#EAB308', x: 0, y: 0, text: '', ...DEFAULT_NOTE_SIZE })
+    p = setNoteText(p, 'n', '- [ ] login', T1)
+    expect(p.nodes[0]).toMatchObject({ text: '- [ ] login' })
+  })
+  test('appendLine acrescenta em nova linha sem linhas vazias sobrando', () => {
+    expect(appendLine('', 'a')).toBe('a')
+    expect(appendLine('a\n\n', 'b')).toBe('a\nb')
   })
 })
