@@ -9,7 +9,7 @@ import { nodePtyFactory } from '../../src/main/pty/nodePty'
 interface FakeProc {
   written: string[]
   killed: boolean
-  resize: ReturnType<typeof vi.fn>
+  resize: ReturnType<typeof vi.fn<(cols: number, rows: number) => void>>
   emitData(d: string): void
   emitExit(c: number): void
 }
@@ -20,7 +20,7 @@ function fakeFactory() {
     let onData: (d: string) => void = () => {}
     let onExit: (e: { exitCode: number }) => void = () => {}
     const rec: FakeProc = {
-      written: [], killed: false, resize: vi.fn(),
+      written: [], killed: false, resize: vi.fn<(cols: number, rows: number) => void>(),
       emitData: (d) => onData(d),
       emitExit: (c) => onExit({ exitCode: c })
     }
